@@ -31,8 +31,6 @@ typedef struct msg_t {
     
     uint8_t hash[HASH_LEN];
 
-    // I was thinking there would be some sort of type here, but I think the user can keep track
-    // of which message is which for simplicity in the library
 } msg_t;
 
 // Use the built-in I2C messaging functions to receive a message and pack it into the struct
