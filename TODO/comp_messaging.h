@@ -11,20 +11,19 @@ simple_i2c and board_link libraries as-is, no need to handle that stuff ourselve
 
 
 // Calculate this as MAX_I2C_LEN - (everything that isn't the contents part that is sent over I2C) - 1
-#define MAX_CONTENTS_LEN 180
+#define MAX_CONTENTS_LEN 192
 #define HASH_LEN 32
 #define IV_LEN 16
 
 typedef struct msg_t {
     // The existing code assumes this exists for telling AP / Components which operation the 
     // message is doing (command_message struct in ap/component .c files)
+
+    uint32_t rng_chal;
+    uint32_t rng_resp;
+
     uint8_t opcode;
-
-    uint64_t rng_chal;
-    uint64_t rng_resp;
-
     // contents are unencrypted in the struct, encrypted when sent out
-    uint8_t actual_content_len;
     uint8_t contents[MAX_CONTENTS_LEN];
 
     uint8_t iv[IV_LEN];
@@ -33,17 +32,14 @@ typedef struct msg_t {
 
 } msg_t;
 
-// Use the built-in I2C messaging functions to receive a message and pack it into the struct
-// be careful about buffer overflows. We can't assume that the input here will be well-formed
+msg_t transmit,recive;
+
 // User needs to specify address.
 // Decrypt the encrypted contents when packing it into the struct
-void recv_i2c(uint8_t address, msg_t *m);
+void ap_transmit(uint8_t address);
 
 // Pack struct to byte array and use the built-in I2C messaging functions to send it out
 // User needs to specify address.
 // Encrypt the contents before passing them to byte array
-void send_i2c(uint8_t address, msg_t *m);
+void ap_poll_recv(uint8_t address);
 
-// Check that the rng_resp in *b is valid for the rng_chal from *a
-// Return 0 if it fails, 1 otherwise
-int verify_msg(msg_t *a, msg_t *b);
