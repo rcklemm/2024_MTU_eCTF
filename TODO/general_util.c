@@ -1,5 +1,10 @@
 #include "general_util.h"
 
+/**
+ * @brief   TRNG Generates 64 bits random number
+ *
+ * @return  A random 64-bit number
+ */
 uint64_t rng_gen()
 {
     uint32_t rnd32_1;
