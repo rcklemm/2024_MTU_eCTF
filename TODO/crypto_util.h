@@ -8,7 +8,9 @@ When writing, use the host_messaging library for debug printing (2024_MTU_eCTF/2
 */
 
 // We will pull this in from somewhere else later
+// Program takes in 16 0x0 bytes as the key will need to work more details out later
 #define KEY 0x0
+
 #define HASH_LEN 32
 #define IV_SIZE 16
 
@@ -17,7 +19,11 @@ When writing, use the host_messaging library for debug printing (2024_MTU_eCTF/2
 #include <stdlib.h>
 #include "general_util.h"
 
-// Assume in and out are alrady allocated, encrypt the contents of *in
+// WolfSSL includes requires the wolfssl library to be installed
+#include <wolfssl/wolfcrypt/sha256.h>
+#include <wolfssl/wolfcrypt/aes.h>
+
+// Assume in and out are already allocated, encrypt the contents of *in
 // up to len bytes and put the output in *out
 // Padding??? Do it here, or assume it was already handled
 // When we do CBC mode, an IV is generated and sent with the ciphertext.
