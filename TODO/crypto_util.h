@@ -18,6 +18,8 @@ When writing, use the host_messaging library for debug printing (2024_MTU_eCTF/2
 #include <stdint.h>
 #include <stdlib.h>
 #include "general_util.h"
+
+// WolfSSL includes requires the wolfssl library to be installed
 #include <wolfssl/wolfcrypt/sha256.h>
 #include <wolfssl/wolfcrypt/aes.h>
 
