@@ -16,6 +16,7 @@ When writing, use the host_messaging library for debug printing (2024_MTU_eCTF/2
 #include <stdint.h>
 #include <stdlib.h>
 #include "general_util.h"
+#include <wolfssl/wolfcrypt/sha256.h>
 
 // Assume in and out are alrady allocated, encrypt the contents of *in
 // up to len bytes and put the output in *out
