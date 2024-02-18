@@ -14,8 +14,8 @@ uint8_t key[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
  * @param iv Initialization vector.
  * @param len Length of the input data.
  */
-void aes_encrypt(uint8_t *in, uint8_t *out, uint8_t iv[IV_SIZE], size_t len) {
-
+void aes_encrypt(uint8_t *in, uint8_t *out, uint8_t iv[IV_SIZE], size_t len) 
+{
     int result; // Library result
     wolfCrypt_Init(); // Initialize wolfSSL
     // Ensure valid length
