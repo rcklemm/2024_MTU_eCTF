@@ -10,7 +10,6 @@ When writing, use the host_messaging library for debug printing (2024_MTU_eCTF/2
 // We will pull this in from somewhere else later
 // Program takes in 16 0x0 bytes as the key will need to work more details out later
 #define KEY 0x0
-
 #define HASH_LEN 32
 #define IV_SIZE 16
 
