@@ -6,6 +6,7 @@ simple_i2c and board_link libraries as-is, no need to handle that stuff ourselve
 
 // TODO: Other includes
 #include <stdint.h>
+#include <string.h>
 #include <stdlib.h>
 #include "crypto_util.h"
 #include "general_util.h"
@@ -14,6 +15,7 @@ simple_i2c and board_link libraries as-is, no need to handle that stuff ourselve
 #define MAX_CONTENTS_LEN 199
 #define HASH_LEN 32
 #define IV_LEN 16
+#define ENC_LEN 208
 
 typedef struct msg_t {
     // The existing code assumes this exists for telling AP / Components which operation the 
@@ -27,7 +29,7 @@ typedef struct msg_t {
     uint8_t iv[IV_LEN];
 } msg_t;
 
-msg_t transmit,recive;
+msg_t transmit,receive;
 
 // User needs to specify address.
 // Decrypt the encrypted contents when packing it into the struct
