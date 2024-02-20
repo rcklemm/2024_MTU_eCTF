@@ -34,24 +34,22 @@ uint64_t rng_gen()
  */
 void time_delay(size_t low_us, size_t high_us)
 {
-    uint32_t rnd32;
+    uint64_t rnd64;
     size_t difference = high_us - low_us;
     float modifier;
     size_t delay;
 
-    //Initialize TRNG
-    MXC_TRNG_Init();
-
-    //Generate 32-bit number 
-    rnd32 = MXC_TRNG_RandomInt();
+    //Generate the 64 bit number
+    rnd64 = rng_gen();
 
     //Remove the divide by zero possiblity and it shouldn't affect code unless large numbers
-    if(rnd32 == 0){
-        rnd32 = 1;
+    if(rnd64 == 0){
+        rnd64 = 1;
     }
 
-    //Dividing by the max uint32_t value can be to get the random modifier when multiplied by the difference
-    modifier = (rnd32 / 4294967295) * difference;
+    //Finds the modifier by using rnd64 / UINTMAX_MAX to get a 0-1 num and multiplies it by the difference
+    modifier = (rnd64 / UINTMAX_MAX) * difference;
+
     //Rounds the modifier and is added to low time to get the delay
     delay = low_us + roundf(modifier);
     
