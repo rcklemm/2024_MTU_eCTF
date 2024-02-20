@@ -26,6 +26,12 @@ uint64_t rng_gen()
     return rnd64;
 }
 
+/**
+ * @brief Does a random time delay for the current thread
+ *
+ * @param low_us minium microseconds to wait
+ * @param high_us maxmimum microseconds to wait
+ */
 void time_delay(size_t low_us, size_t high_us)
 {
     uint32_t rnd32;
@@ -45,7 +51,7 @@ void time_delay(size_t low_us, size_t high_us)
     }
 
     //Dividing by the max uint32_t value can be to get the random modifier when multiplied by the difference
-    modifier = (rnd32 / 4,294,967,295) * difference;
+    modifier = (rnd32 / 4294967295) * difference;
     //Rounds the modifier and is added to low time to get the delay
     delay = low_us + roundf(modifier);
     
@@ -55,4 +61,26 @@ void time_delay(size_t low_us, size_t high_us)
     thrd_sleep(&(struct timespec){.tv_sec=delay/1E-6}, NULL);
 }
 
-int secure_memcmp(uint8_t *a, uint8_t *b, size_t len);
+/**
+ * @brief Does a random time delay for the current thread
+ *
+ * @param a first mem block to compare
+ * @param b second mem block to compare
+ * @param len how many bytes to compare of each mem block
+ */
+int secure_memcmp(uint8_t *a, uint8_t *b, size_t len)
+{
+    uint8_t cmp_status = 0;
+    
+    //Compares the binary of a and b to each other, only if cmp_status
+    //has not changed meaning *a and *b are the same so far. Keeps
+    //running to not leak any info
+    for(int i = 0; i < len; i++){
+        if(*a[i] > *b[i] && status == 0)
+            cmp_status = 1;
+        else if (*a[i] < *b[i] && status == 0)
+            cmp_status = -1;
+    }
+
+    return cmp_status;
+}
