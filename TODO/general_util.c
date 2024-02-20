@@ -76,7 +76,7 @@ int secure_memcmp(uint8_t *a, uint8_t *b, size_t len)
     //has not changed meaning *a and *b are the same so far. Keeps
     //running to not leak any info
     for(int i = 0; i < len; i++){
-        if(*a[i] > *b[i] && status == 0)
+        if(a[i] > b[i] && status == 0)
             cmp_status = 1;
         else if (*a[i] < *b[i] && status == 0)
             cmp_status = -1;
