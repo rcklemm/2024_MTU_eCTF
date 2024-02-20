@@ -1,7 +1,7 @@
 #include "comp_messaging.h"
 #include "board_link.h"
 
-void comp_transmit_and_ack(uint8_t address, msg_t *m)
+void comp_transmit_and_ack()
 {
     //gen new challenge, and answer old challenge
     transmit.rng_resp=receive.rng_chal+1;
@@ -22,17 +22,17 @@ void comp_transmit_and_ack(uint8_t address, msg_t *m)
     uint8_t encryptedData[ENC_LEN];
     aes_encrypt((uint8_t*)&transmit, transmit.iv, encryptedData, ENC_LEN);
     // Assuming you want to overwrite the original with encrypted data
-    memcpy((uint8_t*)&transmit, encryptedData, ENCRYPT_LEN);
+    memcpy((uint8_t*)&transmit, encryptedData, ENC_LEN);
 
     //send packet
     send_packet_and_ack(256, (uint8_t*)&transmit);
 }
 
-int comp_wait_recv(uint8_t address, msg_t *m)
+int comp_wait_recv(int first)
 {
     //poll for incoming packet
     int len = wait_and_receive_packet((uint8_t*)&receive);
-    if(len!=256){
+    if(len < 256){
         return -1;
     }
 
@@ -49,7 +49,7 @@ int comp_wait_recv(uint8_t address, msg_t *m)
     }
 
     // check challenge response
-    if (receive.rng_resp != transmit.rng_chal + 1) {
+    if (!first && (receive.rng_resp != transmit.rng_chal + 1)) {
         return 1; // Challenge-response mismatch
     }
 

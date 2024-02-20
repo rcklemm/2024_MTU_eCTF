@@ -38,6 +38,8 @@ try to use them here. Whoever does this should also do component.c
 #include "simple_crypto.h"
 #endif
 
+#include "ap_messaging.h"
+
 #ifdef POST_BOOT
 #include <stdint.h>
 #include <stdio.h>
@@ -194,18 +196,19 @@ void init() {
 }
 
 // Send a command to a component and receive the result
-int issue_cmd(i2c_addr_t addr, uint8_t* transmit, uint8_t* receive) {
+int issue_cmd(i2c_addr_t addr) {
     // Send message
-    int result = send_packet(addr, sizeof(uint8_t), transmit);
+    int result = ap_transmit(addr);
     if (result == ERROR_RETURN) {
         return ERROR_RETURN;
     }
     
     // Receive message
-    int len = poll_and_receive_packet(addr, receive);
+    int len = ap_poll_recv(addr);
     if (len == ERROR_RETURN) {
         return ERROR_RETURN;
     }
+
     return len;
 }
 
@@ -227,18 +230,22 @@ int scan_components() {
         if (addr == 0x36) {
             continue;
         }
-
+        
         // Create command message 
-        command_message* command = (command_message*) transmit_buffer;
-        command->opcode = COMPONENT_CMD_SCAN;
+        transmit.opcode = COMPONENT_CMD_SCAN;
+        
+
+        // command_message* command = (command_message*) transmit_buffer;
+        // command->opcode = COMPONENT_CMD_SCAN;
         
         // Send out command and receive result
-        int len = issue_cmd(addr, transmit_buffer, receive_buffer);
+        int len = issue_cmd(addr);
 
         // Success, device is present
         if (len > 0) {
-            scan_message* scan = (scan_message*) receive_buffer;
-            print_info("F>0x%08x\n", scan->component_id);
+            //receive.contents;
+            //scan_message* scan = (scan_message*) receive_buffer;
+            print_info("F>0x%08x\n", *((uint32_t*) receive.contents));
         }
     }
     print_success("List\n");
@@ -391,7 +398,7 @@ void boot() {
 // Compare the entered PIN to the correct PIN
 int validate_pin() {
     char buf[50];
-    recv_input("Enter pin: ", buf);
+    recv_input("Enter pin: ", buf, 50);
     if (!strcmp(buf, AP_PIN)) {
         print_debug("Pin Accepted!\n");
         return SUCCESS_RETURN;
@@ -403,7 +410,7 @@ int validate_pin() {
 // Function to validate the replacement token
 int validate_token() {
     char buf[50];
-    recv_input("Enter token: ", buf);
+    recv_input("Enter token: ", buf, 50);
     if (!strcmp(buf, AP_TOKEN)) {
         print_debug("Token Accepted!\n");
         return SUCCESS_RETURN;
@@ -450,9 +457,9 @@ void attempt_replace() {
     uint32_t component_id_in = 0;
     uint32_t component_id_out = 0;
 
-    recv_input("Component ID In: ", buf);
+    recv_input("Component ID In: ", buf, 50);
     sscanf(buf, "%x", &component_id_in);
-    recv_input("Component ID Out: ", buf);
+    recv_input("Component ID Out: ", buf, 50);
     sscanf(buf, "%x", &component_id_out);
 
     // Find the component to swap out
@@ -484,7 +491,7 @@ void attempt_attest() {
         return;
     }
     uint32_t component_id;
-    recv_input("Component ID: ", buf);
+    recv_input("Component ID: ", buf, 50);
     sscanf(buf, "%x", &component_id);
     attest_component(component_id);
     print_success("Attest\n");
@@ -503,7 +510,7 @@ int main() {
     // Handle commands forever
     char buf[100];
     while (1) {
-        recv_input("Enter Command: ", buf);
+        recv_input("Enter Command: ", buf, 100);
 
         // Execute requested command
         if (!strcmp(buf, "list")) {

@@ -1,3 +1,6 @@
+#ifndef GENERAL_UTIL_H
+#define GENERAL_UTIL_H
+
 /*
 True RNG, secure memcmp, time delay functions
 
@@ -21,3 +24,5 @@ void time_delay(size_t low_us, size_t high_us);
 // Do not leave the for-loop early to avoid timing attacks
 // Return 0 if equal, nonzero otherwise. Doesn't matter what the nonzero value is
 int secure_memcmp(uint8_t *a, uint8_t *b, size_t len);
+
+#endif

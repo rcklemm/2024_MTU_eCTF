@@ -7,13 +7,14 @@ simple_i2c and board_link libraries as-is, no need to handle that stuff ourselve
 // TODO: Other includes
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.g>
+#include <string.h>
 #include "crypto_util.h"
 
 
 // Calculate this as MAX_I2C_LEN - (everything that isn't the contents part that is sent over I2C) - 1
 #define MAX_CONTENTS_LEN 199
 #define HASH_LEN 32
+#define ENC_LEN 208
 #define IV_LEN 16
 
 typedef struct msg_t {
@@ -33,12 +34,12 @@ typedef struct msg_t {
 
 } msg_t;
 
-msg_t transmit,recive;
+msg_t transmit, receive;
 
 // Decrypt the encrypted contents when packing it into the struct
 void comp_transmit_and_ack();
 
 // Pack struct to byte array and use the built-in I2C messaging functions to send it out
 // Encrypt the contents before passing them to byte array
-int comp_wait_recv();
+int comp_wait_recv(int first);
 

@@ -24,16 +24,16 @@ int ap_transmit(uint8_t address)
     uint8_t encryptedData[ENC_LEN];
     aes_encrypt((uint8_t*)&transmit, transmit.iv, encryptedData, ENC_LEN);
     // Assuming you want to overwrite the original with encrypted data
-    memcpy((uint8_t*)&transmit, encryptedData, ENCRYPT_LEN);
+    memcpy((uint8_t*)&transmit, encryptedData, ENC_LEN);
 
     //send packet
-    int result = send_packet(address,256,(uint8_t*)&transmit);
+    int result = send_packet(address, 256, (uint8_t*) &transmit);
     return result;
 }
 
 int ap_poll_recv(uint8_t address) {
     //poll for incoming packet
-    int len = poll_and_receive_packet(addr,(uint8_t*)&receive);
+    int len = poll_and_receive_packet(address, (uint8_t*)&receive);
     if (len == ERROR_RETURN) {
         return ERROR_RETURN;
     }
@@ -47,12 +47,12 @@ int ap_poll_recv(uint8_t address) {
     uint8_t computedHash[HASH_LEN];
     hash((uint8_t*)&receive, computedHash, ENC_LEN); 
     if (memcmp(receive.hash, computedHash, HASH_LEN) != 0) {
-        return 1; // Hash mismatch
+        return -1; // Hash mismatch
     }
 
     // check challenge response
     if (receive.rng_resp != transmit.rng_chal + 1) {
-        return 1; // Challenge-response mismatch
+        return -1; // Challenge-response mismatch
     }
 
     // if all checks pass

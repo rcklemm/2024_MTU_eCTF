@@ -36,6 +36,8 @@ try to use them here. Whoever does this should also do application_processor.c
 #include "ectf_params.h"
 #include "global_secrets.h"
 
+#include "comp_messaging.h"
+
 #ifdef POST_BOOT
 #include "led.h"
 #include <stdint.h>
@@ -157,10 +159,10 @@ void boot() {
 
 // Handle a transaction from the AP
 void component_process_cmd() {
-    command_message* command = (command_message*) receive_buffer;
+    //command_message* command = (command_message*) receive_buffer;
 
     // Output to application processor dependent on command received
-    switch (command->opcode) {
+    switch (receive.opcode) {
     case COMPONENT_CMD_BOOT:
         process_boot();
         break;
@@ -174,7 +176,7 @@ void component_process_cmd() {
         process_attest();
         break;
     default:
-        printf("Error: Unrecognized command received %d\n", command->opcode);
+        printf("Error: Unrecognized command received %d\n", receive.opcode);
         break;
     }
 }
@@ -191,9 +193,12 @@ void process_boot() {
 
 void process_scan() {
     // The AP requested a scan. Respond with the Component ID
-    scan_message* packet = (scan_message*) transmit_buffer;
-    packet->component_id = COMPONENT_ID;
-    send_packet_and_ack(sizeof(scan_message), transmit_buffer);
+    *((uint32_t *) transmit.contents) = COMPONENT_ID;
+    
+    // scan_message* packet = (scan_message*) transmit_buffer;
+    // packet->component_id = COMPONENT_ID;
+    //send_packet_and_ack(sizeof(scan_message), transmit_buffer);
+    comp_transmit_and_ack();
 }
 
 void process_validate() {
@@ -225,7 +230,7 @@ int main(void) {
     LED_On(LED2);
 
     while (1) {
-        wait_and_receive_packet(receive_buffer);
+        comp_wait_recv(1);
 
         component_process_cmd();
     }

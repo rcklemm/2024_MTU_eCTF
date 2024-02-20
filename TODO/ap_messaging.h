@@ -1,3 +1,6 @@
+#ifndef AP_MESSAGING_H
+#define AP_MESSAGING_H
+
 /*
 Custom messaging structs & serialization routines. User defines struct msg objects
 and these functions handle sending them as an I2C message. We can use the built-in
@@ -29,14 +32,15 @@ typedef struct msg_t {
     uint8_t iv[IV_LEN];
 } msg_t;
 
-msg_t transmit,receive;
+msg_t transmit, receive;
 
 // User needs to specify address.
 // Decrypt the encrypted contents when packing it into the struct
-void ap_transmit(uint8_t address);
+int ap_transmit(uint8_t address);
 
 // Pack struct to byte array and use the built-in I2C messaging functions to send it out
 // User needs to specify address.
 // Encrypt the contents before passing them to byte array
-void ap_poll_recv(uint8_t address);
+int ap_poll_recv(uint8_t address);
 
+#endif 
