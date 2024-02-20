@@ -15,7 +15,7 @@ uint64_t rng_gen();
 // Pick a random number of microseconds between low and high, sleep the chip that amount of time
 // No idea how hard this will be to implement. If there isn't built-in functionality, just do busy waiting
 // and query the time constantly in a while-loop
-void time_delay(size_t low_us, size_t high_us);
+void time_delay(uint32_t low_us, uint32_t high_us);
 
 // Compare the contents of *a and *b up to len bytes
 // Do not leave the for-loop early to avoid timing attacks

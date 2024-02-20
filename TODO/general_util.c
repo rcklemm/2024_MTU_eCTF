@@ -32,12 +32,12 @@ uint64_t rng_gen()
  * @param low_us minium microseconds to wait
  * @param high_us maxmimum microseconds to wait
  */
-void time_delay(size_t low_us, size_t high_us)
+void time_delay(uint32_t low_us, uint32_t high_us)
 {
     uint64_t rnd64;
-    size_t difference = high_us - low_us;
+    uint32_t difference = high_us - low_us;
     float modifier;
-    size_t delay;
+    uint32_t delay;
 
     //Generate the 64 bit number
     rnd64 = rng_gen();
@@ -50,13 +50,9 @@ void time_delay(size_t low_us, size_t high_us)
     //Finds the modifier by using rnd64 / UINTMAX_MAX to get a 0-1 num and multiplies it by the difference
     modifier = (rnd64 / UINTMAX_MAX) * difference;
 
-    //Rounds the modifier and is added to low time to get the delay
+    //Rounds the modifier and is added to low time to get the delay then delays the device
     delay = low_us + roundf(modifier);
-    
-    //Puts the current thread to sleep based on the delay time, and gets it into seconds
-    //Going off of this documenttation for thrd_sleep
-    //https://en.cppreference.com/w/c/thread/thrd_sleep
-    thrd_sleep(&(struct timespec){.tv_sec=delay/1E-6}, NULL);
+    MXC_Delay(delay);
 }
 
 /**
