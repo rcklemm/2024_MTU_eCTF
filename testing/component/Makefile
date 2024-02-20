@@ -253,6 +253,7 @@ MXC_OPTIMIZE_CFLAGS ?= -O2
 
 # Set compiler flags
 PROJ_CFLAGS += -Wall # Enable warnings
+PROJ_CFLAGS += -Wno-cpp # turn off preprocessor #warning that wolfssl emits
 ifeq ($(CRYPTO_EXAMPLE), 1)
 PROJ_CFLAGS += -DMXC_ASSERT_ENABLE
 # eCTF Crypto Example - WolfSSL Flags
