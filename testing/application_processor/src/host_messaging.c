@@ -18,7 +18,13 @@ void recv_input(const char *msg, char *buf, size_t len) {
     print_debug(msg);
     fflush(0);
     print_ack();
-    fgets(buf, len, stdin);
+    /*char *fgets_out = */fgets(buf, len, stdin);
+    // if (fgets_out != NULL) {
+    //     buf[strlen(buf) - 1] = '\0';
+    // } else {
+    //     print_debug("fgets failed somehow\n");
+    // }
+    //gets(buf);
     puts("");
 }
 

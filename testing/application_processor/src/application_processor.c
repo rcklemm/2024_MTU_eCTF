@@ -473,7 +473,7 @@ int main() {
         recv_input("Enter Command: ", buf, 100);
 
         // Execute requested command
-        if (!strcmp(buf, "list")) {
+        if (!strcmp(buf, "list\n")) {
             print_debug("Received List Command\n");
             scan_components();
         } else if (!strcmp(buf, "boot")) {
