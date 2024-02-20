@@ -66,9 +66,9 @@ stdenv.mkDerivation {
   '';
 
   enableParallelBuilding = true;
-  
+
   hardeningDisable = [ "fortify" ];
-  
+
   configurePhase = ''
     SKIP_SUBMODULE=1 ./bootstrap
     ./configure --prefix=$out --disable-werror

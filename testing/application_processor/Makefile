@@ -172,9 +172,9 @@ VPATH += .
 VPATH += src
 
 # eCTF Crypto Example
-#ifeq ($(CRYPTO_EXAMPLE), 1)
+ifeq ($(CRYPTO_EXAMPLE), 1)
 VPATH += wolfssl/wolfcrypt/src
-#endif
+endif
 
 VPATH := $(VPATH)
 
@@ -182,9 +182,9 @@ VPATH := $(VPATH)
 IPATH += .
 IPATH += include
 # eCTF Crypto Example
-#ifeq ($(CRYPTO_EXAMPLE), 1)
+ifeq ($(CRYPTO_EXAMPLE), 1)
 IPATH += wolfssl
-#endif
+endif
 IPATH := $(IPATH)
 
 AUTOSEARCH ?= 1
@@ -251,13 +251,17 @@ MXC_OPTIMIZE_CFLAGS ?= -O2
 
 # Set compiler flags
 PROJ_CFLAGS += -Wall # Enable warnings
-#ifeq ($(CRYPTO_EXAMPLE), 1)
+ifeq ($(CRYPTO_EXAMPLE), 1)
 PROJ_CFLAGS += -DMXC_ASSERT_ENABLE
 # eCTF Crypto Example - WolfSSL Flags
 PROJ_CFLAGS += -DNO_WOLFSSL_DIR
 PROJ_CFLAGS += -DWOLFSSL_AES_DIRECT
 PROJ_CFLAGS += -DCRYPTO_EXAMPLE=1
-#endif
+# From https://www.wolfssl.com/documentation/manuals/wolfssl/chapter02.html#building-with-gcc-arm
+PROJ_CFLAGS += -DHAVE_PK_CALLBACKS                                                               
+PROJ_CFLAGS += -DWOLFSSL_USER_IO                                                                 
+PROJ_CFLAGS += -DNO_WRITEV -DTIME_T_NOT_64BIT                                                    
+endif
 
 ifeq ($(POST_BOOT_ENABLED), 1)
 	PROJ_CFLAGS += -DPOST_BOOT=$(POST_BOOT_CODE)

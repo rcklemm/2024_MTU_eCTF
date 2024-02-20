@@ -220,6 +220,7 @@ int scan_components() {
 
     // Scan scan command to each component 
     for (i2c_addr_t addr = 0x8; addr < 0x7F; addr++) {
+        print_debug("Trying to scan address: %d\n", addr);
         // I2C Blacklist - 0x36 conflicts with separate device on MAX78000FTHR
         if (addr == 0x36) {
             continue;
@@ -467,18 +468,22 @@ int main() {
 
     // Handle commands forever
     char buf[100];
-    strcpy(buf, "hi");
+    //strcpy(buf, "hi");
     while (1) {
-        //recv_input("Enter Command: ", buf, 100);
+        recv_input("Enter Command: ", buf, 100);
 
         // Execute requested command
         if (!strcmp(buf, "list")) {
+            print_debug("Received List Command\n");
             scan_components();
         } else if (!strcmp(buf, "boot")) {
+            print_debug("Received Boot Command\n");
             attempt_boot();
         } else if (!strcmp(buf, "replace")) {
+            print_debug("Received Replace Command\n");
             attempt_replace();
         } else if (!strcmp(buf, "attest")) {
+            print_debug("Attest Replace Command\n");
             attempt_attest();
         } else {
             print_error("Unrecognized command '%s'\n", buf);
