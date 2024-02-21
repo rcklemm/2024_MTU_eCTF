@@ -38,6 +38,8 @@ try to use them here. Whoever does this should also do application_processor.c
 
 #include "comp_messaging.h"
 
+#include "host_messaging.h"
+
 #ifdef POST_BOOT
 #include "led.h"
 #include <stdint.h>
@@ -196,12 +198,14 @@ void process_boot() {
 }
 
 void process_scan() {
+    print_debug("entered process_scan on component\n");
     // The AP requested a scan. Respond with the Component ID
     *((uint32_t *) transmit.contents) = COMPONENT_ID;
     
     // scan_message* packet = (scan_message*) transmit_buffer;
     // packet->component_id = COMPONENT_ID;
     //send_packet_and_ack(sizeof(scan_message), transmit_buffer);
+    print_debug("component trying to respond to scan\n");
     comp_transmit_and_ack();
 }
 
@@ -229,10 +233,13 @@ int main(void) {
     
     // Initialize Component
     i2c_addr_t addr = component_id_to_i2c_addr(COMPONENT_ID);
+    print_debug("component initializing with addr: %d\n", addr);
     board_link_init(addr);
     
-    LED_On(LED2);
 
+    //MXC_Delay(10000000);
+    LED_On(LED2);
+    print_debug("component starting\n");
     while (1) {
         comp_wait_recv(1);
 

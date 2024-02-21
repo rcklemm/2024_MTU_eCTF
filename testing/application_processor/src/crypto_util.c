@@ -1,4 +1,6 @@
 #include "crypto_util.h"
+#include "host_messaging.h"
+
 
 #define BLOCK_SIZE 16
 
@@ -23,6 +25,13 @@ void aes_encrypt(uint8_t *in, uint8_t *out, uint8_t iv[IV_SIZE], size_t len)
         return; //Invalid length
     Aes aes; // Context for encryption
 
+    print_debug("in before encryption: ");
+    print_hex(in, len);
+    print_debug("iv= ");
+    print_hex(iv, IV_SIZE);
+    print_debug("key= ");
+    print_hex(key, 16);
+
     wc_AesInit(&aes, NULL, INVALID_DEVID); // Initialize the context
 
     wc_AesSetKey(&aes, key, sizeof(key), iv, AES_ENCRYPTION); // Set the key and IV
@@ -30,6 +39,9 @@ void aes_encrypt(uint8_t *in, uint8_t *out, uint8_t iv[IV_SIZE], size_t len)
 
     wc_AesFree(&aes); // Clean up the context
     wolfCrypt_Cleanup(); // Clean up wolfSSL
+
+    print_debug("out after encryption: ");
+    print_hex(out, len);
 }
 
 /**
@@ -40,7 +52,7 @@ void aes_encrypt(uint8_t *in, uint8_t *out, uint8_t iv[IV_SIZE], size_t len)
  * @param out Pointer to the output buffer where the decrypted data will be stored.
  * @param len Length of the input data.
  */
-void aes_decrypt(uint8_t *in, uint8_t iv[IV_SIZE], uint8_t *out, size_t len)
+void aes_decrypt(uint8_t *in, uint8_t *out, uint8_t iv[IV_SIZE], size_t len)
 {
     int result; // Library result
     wolfCrypt_Init(); // Initialize wolfSSL

@@ -15,10 +15,10 @@ simple_i2c and board_link libraries as-is, no need to handle that stuff ourselve
 #include "general_util.h"
 
 // Calculate this as MAX_I2C_LEN - (everything that isn't the contents part that is sent over I2C) - 1
-#define MAX_CONTENTS_LEN 198
+#define MAX_CONTENTS_LEN 7
 #define HASH_LEN 32
 #define IV_LEN 16
-#define ENC_LEN 207
+#define ENC_LEN (MAX_CONTENTS_LEN + 9)
 
 #pragma pack(push,1)
 typedef struct msg_t {
@@ -44,5 +44,7 @@ int ap_transmit(uint8_t address);
 // User needs to specify address.
 // Encrypt the contents before passing them to byte array
 int ap_poll_recv(uint8_t address);
+
+void struct_debug();
 
 #endif 

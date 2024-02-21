@@ -1,5 +1,6 @@
 #include "ap_messaging.h"
 #include "board_link.h"
+#include "host_messaging.h"
 
 msg_t transmit, receive;
 
@@ -7,29 +8,44 @@ msg_t transmit, receive;
 //has opcode and content set, everything else is handled here
 int ap_transmit(uint8_t address)
 {
+    print_debug("entering ap_transmit function\n");
     //gen new challenge, and answer old challenge
     transmit.rng_resp=receive.rng_chal+1;
+    print_debug("generating challenge\n");
     transmit.rng_chal=(uint32_t)(rng_gen()>>32);
-    
+    print_debug("done generating challenge\n");
+
     //gen iv
+    print_debug("making IV\n");
     uint64_t randValue;
     randValue = rng_gen();
     memcpy(&transmit.iv[0], &randValue, sizeof(randValue));
 
     randValue = rng_gen();
     memcpy(&transmit.iv[8], &randValue, sizeof(randValue));
+    print_debug("done making IV\n");
 
     //gen hash
-    hash((uint8_t*)&transmit,transmit.hash,ENC_LEN);
+    print_debug("starting hash\n");
+    hash((uint8_t*)&transmit, transmit.hash, ENC_LEN);
+    print_debug("done with hash\n");
 
     // Encrypt from rng_chal to contents
+    print_debug("starting encryption, struct hex=\n");
+    print_hex((uint8_t*) &transmit, sizeof(msg_t));
+
     uint8_t encryptedData[ENC_LEN];
-    aes_encrypt((uint8_t*)&transmit, transmit.iv, encryptedData, ENC_LEN);
+    aes_encrypt((uint8_t*)&transmit, encryptedData, transmit.iv, ENC_LEN);
     // Assuming you want to overwrite the original with encrypted data
     memcpy((uint8_t*)&transmit, encryptedData, ENC_LEN);
+    print_debug("done with encryption, struct hex=\n");
 
+    print_hex((uint8_t*) &transmit, sizeof(msg_t));
+
+    print_debug("calling board_link send_packet function\n");
     //send packet
-    int result = send_packet(address, 255, (uint8_t*) &transmit);
+    int result = send_packet(address, 4*sizeof(uint8_t), /*sizeof(msg_t),*/ (uint8_t*) &transmit);
+    print_debug("got result: %d\n", result);
     return result;
 }
 
@@ -59,4 +75,42 @@ int ap_poll_recv(uint8_t address) {
 
     // if all checks pass
     return 0;
+}
+
+void struct_debug()
+{
+    msg_t test;
+
+    test.rng_resp = 0x11111111;
+    test.rng_chal = 0x22222222;
+
+    test.opcode = 0x33;
+
+    memset(test.contents, 0x44, MAX_CONTENTS_LEN);
+
+    memset(test.hash, 0x55, HASH_LEN);
+
+    memset(test.iv, 0x66, IV_LEN);
+
+    print_debug("hex of rng_resp: ");
+    print_hex((uint8_t*) &(test.rng_resp), 4);
+
+    print_debug("hex of rng_chal: ");
+    print_hex((uint8_t*) &(test.rng_chal), 4);
+
+    print_debug("hex of opcode: ");
+    print_hex((uint8_t*) &(test.opcode), 1);
+
+    print_debug("hex of contents: ");
+    print_hex((uint8_t*) &(test.contents), MAX_CONTENTS_LEN);
+
+    print_debug("hex of hash: ");
+    print_hex((uint8_t*) &(test.hash), HASH_LEN);
+
+    print_debug("hex of iv: ");
+    print_hex((uint8_t*) &(test.iv), IV_LEN);
+
+
+    print_debug("hex of full struct: ");
+    print_hex((uint8_t*) &(test), sizeof(msg_t));
 }

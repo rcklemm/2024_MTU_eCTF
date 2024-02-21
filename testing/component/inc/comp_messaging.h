@@ -12,27 +12,25 @@ simple_i2c and board_link libraries as-is, no need to handle that stuff ourselve
 
 
 // Calculate this as MAX_I2C_LEN - (everything that isn't the contents part that is sent over I2C) - 1
-#define MAX_CONTENTS_LEN 199
+#define MAX_CONTENTS_LEN 7
 #define HASH_LEN 32
-#define ENC_LEN 208
 #define IV_LEN 16
+#define ENC_LEN (MAX_CONTENTS_LEN + 9)
 
+#pragma pack(push,1)
 typedef struct msg_t {
     // The existing code assumes this exists for telling AP / Components which operation the 
     // message is doing (command_message struct in ap/component .c files)
-
     uint32_t rng_chal;
     uint32_t rng_resp;
-
     uint8_t opcode;
     // contents are unencrypted in the struct, encrypted when sent out
     uint8_t contents[MAX_CONTENTS_LEN];
 
-    uint8_t iv[IV_LEN];
-    
     uint8_t hash[HASH_LEN];
-
+    uint8_t iv[IV_LEN];
 } msg_t;
+#pragma pack(pop)
 
 // Decrypt the encrypted contents when packing it into the struct
 void comp_transmit_and_ack();

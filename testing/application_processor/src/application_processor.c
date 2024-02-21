@@ -468,12 +468,11 @@ int main() {
 
     // Handle commands forever
     char buf[100];
-    //strcpy(buf, "hi");
     while (1) {
         recv_input("Enter Command: ", buf, 100);
 
         // Execute requested command
-        if (!strcmp(buf, "list\n")) {
+        if (!strcmp(buf, "list")) {
             print_debug("Received List Command\n");
             scan_components();
         } else if (!strcmp(buf, "boot")) {
@@ -486,6 +485,7 @@ int main() {
             print_debug("Attest Replace Command\n");
             attempt_attest();
         } else {
+            struct_debug();
             print_error("Unrecognized command '%s'\n", buf);
         }
     }

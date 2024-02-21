@@ -255,6 +255,9 @@ PROJ_CFLAGS += -Wno-cpp # turn off preprocessor #warning that wolfssl emits
 ifeq ($(CRYPTO_EXAMPLE), 1)
 PROJ_CFLAGS += -DMXC_ASSERT_ENABLE
 # eCTF Crypto Example - WolfSSL Flags
+PROJ_CFLAGS += -DNO_TLS
+PROJ_CFLAGS += -DNO_DH
+
 PROJ_CFLAGS += -DNO_WOLFSSL_DIR
 PROJ_CFLAGS += -DWOLFSSL_AES_DIRECT
 PROJ_CFLAGS += -DCRYPTO_EXAMPLE=1
