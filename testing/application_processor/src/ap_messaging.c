@@ -44,14 +44,16 @@ int ap_transmit(uint8_t address)
 
     print_debug("calling board_link send_packet function\n");
     //send packet
-    int result = send_packet(address, 4*sizeof(uint8_t), /*sizeof(msg_t),*/ (uint8_t*) &transmit);
+    int result = send_packet(address, 5*sizeof(uint8_t), /*sizeof(msg_t),*/ (uint8_t*) &transmit);
     print_debug("got result: %d\n", result);
     return result;
 }
 
 int ap_poll_recv(uint8_t address) {
+    print_debug("ap_poll_recv entered: address = %d\n", address);
     //poll for incoming packet
     int len = poll_and_receive_packet(address, (uint8_t*)&receive);
+    print_debug("received len=%d from board_link poll_recv\n", len);
     if (len == ERROR_RETURN) {
         return ERROR_RETURN;
     }
