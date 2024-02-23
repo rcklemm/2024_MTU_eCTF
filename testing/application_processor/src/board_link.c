@@ -50,24 +50,24 @@ i2c_addr_t component_id_to_i2c_addr(uint32_t component_id) {
  * Function sends an arbitrary packet over i2c to a specified component
 */
 int send_packet(i2c_addr_t address, uint8_t len, uint8_t* packet) {
-    print_debug("send_packet: address: %d, len: %d, packet: %p\n", address, len, packet);
+   // print_debug("send_packet: address: %d, len: %d, packet: %p\n", address, len, packet);
     int result;
-    print_debug("send_packet 1\n");
+    //print_debug("send_packet 1\n");
     result = i2c_simple_write_receive_len(address, len);
     if (result < SUCCESS_RETURN) {
-        print_debug("send packet 1a\n");
+        //print_debug("send packet 1a\n");
         return ERROR_RETURN;
     }
-    print_debug("send_packet 2\n");
+    //print_debug("send_packet 2\n");
     result = i2c_simple_write_data_generic(address, RECEIVE, len, packet);
     if (result < SUCCESS_RETURN) {
-        print_debug("send packet 2a\n");
+       // print_debug("send packet 2a\n");
         return ERROR_RETURN;
     }
-    print_debug("send_packet 3\n");
+    //print_debug("send_packet 3\n");
     result = i2c_simple_write_receive_done(address, true);
     if (result < SUCCESS_RETURN) {
-        print_debug("send packet 3a\n");
+        //print_debug("send packet 3a\n");
         return ERROR_RETURN;
     }
 
@@ -83,7 +83,7 @@ int send_packet(i2c_addr_t address, uint8_t len, uint8_t* packet) {
  * @return int: size of data received, ERROR_RETURN if error
 */
 int poll_and_receive_packet(i2c_addr_t address, uint8_t* packet) {
-    print_debug("poll_and_receive_packet: addr = %d, packet = %p\n", address, packet);
+    //print_debug("poll_and_receive_packet: addr = %d, packet = %p\n", address, packet);
     int result = SUCCESS_RETURN;
     while (true) {
         result = i2c_simple_read_transmit_done(address);
@@ -95,24 +95,24 @@ int poll_and_receive_packet(i2c_addr_t address, uint8_t* packet) {
         }
         MXC_Delay(50);
     }
-    print_debug("poll_and_receive_packet 1\n");
+    //print_debug("poll_and_receive_packet 1\n");
     int len = i2c_simple_read_transmit_len(address);
     if (len < SUCCESS_RETURN) {
         return ERROR_RETURN;
     }
 
-    print_debug("poll_and_receive_packet 2\n");
+    //print_debug("poll_and_receive_packet 2\n");
     result = i2c_simple_read_data_generic(address, TRANSMIT, (uint8_t)len, packet);
     if (result < SUCCESS_RETURN) {
         return ERROR_RETURN;
     }
 
-    print_debug("poll_and_receive_packet 3\n");
+    //print_debug("poll_and_receive_packet 3\n");
     result = i2c_simple_write_transmit_done(address, true);
     if (result < SUCCESS_RETURN) {
         return ERROR_RETURN;
     }
 
-    print_debug("poll_and_receive_packet returning %d\n", len);
+    //print_debug("poll_and_receive_packet returning %d\n", len);
     return len;
 }

@@ -190,6 +190,7 @@ void component_process_cmd() {
 void process_boot() {
     // The AP requested a boot. Set `component_boot` for the main loop and
     // respond with the boot message
+
     uint8_t len = strlen(COMPONENT_BOOT_MSG) + 1;
     memcpy((void*)transmit_buffer, COMPONENT_BOOT_MSG, len);
     send_packet_and_ack(len, transmit_buffer);
@@ -199,6 +200,19 @@ void process_boot() {
 
 void process_scan() {
     print_debug("entered process_scan on component\n");
+    
+    // Send pack a 1-byte message to show we are alive
+    uint8_t alive[1];
+    print_debug("telling AP we are alive\n");
+    send_packet_and_ack(sizeof(uint8_t), alive);
+
+    print_debug("waiting for AP to ask us for ID\n");
+    int ret = comp_wait_recv(1);
+    if (ret != COMP_MESSAGE_SUCCESS) {
+        print_debug("scan wait_recv failed\n");
+    }
+
+    // Receive the next command to actually get
     // The AP requested a scan. Respond with the Component ID
     *((uint32_t *) transmit.contents) = COMPONENT_ID;
     

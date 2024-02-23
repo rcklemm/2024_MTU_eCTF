@@ -206,6 +206,23 @@ int issue_cmd(i2c_addr_t addr) {
     return len;
 }
 
+// Send a command to a component and receive the result
+// USE THIS JUST IN THE SCANNING, sends exactly one byte
+int issue_cmd_scan(i2c_addr_t addr, uint8_t* transmit, uint8_t* receive) {
+    // Send message
+    int result = send_packet(addr, sizeof(uint8_t), transmit);
+    if (result == ERROR_RETURN) {
+        return ERROR_RETURN;
+    }
+    
+    // Receive message
+    int len = poll_and_receive_packet(addr, receive);
+    if (len == ERROR_RETURN) {
+        return ERROR_RETURN;
+    }
+    return len;
+}
+
 /******************************** COMPONENT COMMS ********************************/
 
 int scan_components() {
@@ -215,32 +232,40 @@ int scan_components() {
     }
 
     // Buffers for board link communication
-    // uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
-    // uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
+    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
+    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
 
     // Scan scan command to each component 
-    for (i2c_addr_t addr = 0x8; addr < 0x7F; addr++) {
+    for (i2c_addr_t addr = 0x24; addr <= 0x25; addr++) {
         print_debug("Trying to scan address: %d\n", addr);
         // I2C Blacklist - 0x36 conflicts with separate device on MAX78000FTHR
         if (addr == 0x36) {
             continue;
         }
         
-        // Create command message 
+        // Check if component is alive
+        command_message* command = (command_message*) transmit_buffer;
+        command->opcode = COMPONENT_CMD_SCAN;
+        int len = issue_cmd_scan(addr, transmit_buffer, receive_buffer);
+        if (len == ERROR_RETURN) {
+            print_debug("Address %d is not up\n", addr);
+            continue;
+        }
+
+        print_debug("Address %d is up, getting its ID\n", addr);
+        
+        // Assume component is alive -- get its ID 
         transmit.opcode = COMPONENT_CMD_SCAN;
         
-
-        // command_message* command = (command_message*) transmit_buffer;
-        // command->opcode = COMPONENT_CMD_SCAN;
-        
         // Send out command and receive result
-        int len = issue_cmd(addr);
+        len = issue_cmd(addr);
 
-        // Success, device is present
+        // Success, device is present and we have communicated with it again
         if (len > 0) {
-            //receive.contents;
             //scan_message* scan = (scan_message*) receive_buffer;
             print_info("F>0x%08x\n", *((uint32_t*) receive.contents));
+        } else {
+            print_debug("Failed to receive response from component");
         }
     }
     print_success("List\n");

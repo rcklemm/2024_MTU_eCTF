@@ -11,11 +11,15 @@ simple_i2c and board_link libraries as-is, no need to handle that stuff ourselve
 #include "crypto_util.h"
 
 
+#define COMP_MESSAGE_ERROR -1
+#define COMP_MESSAGE_1BYTE -2
+#define COMP_MESSAGE_SUCCESS 0
+
 // Calculate this as MAX_I2C_LEN - (everything that isn't the contents part that is sent over I2C) - 1
-#define MAX_CONTENTS_LEN 7
+#define MAX_CONTENTS_LEN 198
 #define HASH_LEN 32
 #define IV_LEN 16
-#define ENC_LEN (MAX_CONTENTS_LEN + 9)
+#define ENC_LEN 208
 
 #pragma pack(push,1)
 typedef struct msg_t {

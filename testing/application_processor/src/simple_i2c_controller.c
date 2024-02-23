@@ -133,7 +133,7 @@ int i2c_simple_write_receive_done(i2c_addr_t addr, bool done) {
  * specified value
 */
 int i2c_simple_write_receive_len(i2c_addr_t addr, uint8_t len) {
-    print_debug("write_receive_len: addr: %d, len: %d\n", addr, len);
+    //print_debug("write_receive_len: addr: %d, len: %d\n", addr, len);
     return i2c_simple_write_status_generic(addr, RECEIVE_LEN, len); 
 }
 
@@ -268,7 +268,7 @@ int i2c_simple_read_status_generic(i2c_addr_t addr, ECTF_I2C_REGS reg) {
  * Write any register that is 1B in size
 */
 int i2c_simple_write_status_generic(i2c_addr_t addr, ECTF_I2C_REGS reg, uint8_t value) {
-    print_debug("write_generic start: addr: %d, reg: %d, value: %d\n", addr, reg, value);
+   // print_debug("write_generic start: addr: %d, reg: %d, value: %d\n", addr, reg, value);
     uint8_t packet[2];
     packet[0] = (uint8_t) reg;
     packet[1] = value;
@@ -282,7 +282,7 @@ int i2c_simple_write_status_generic(i2c_addr_t addr, ECTF_I2C_REGS reg, uint8_t 
     request.rx_buf = 0;
     request.restart = 0;
     request.callback = NULL;
-    print_debug("write_generic: about to call MXC function\n");
+   // print_debug("write_generic: about to call MXC function\n");
 
     return MXC_I2C_MasterTransaction(&request);
 }
