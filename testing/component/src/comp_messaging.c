@@ -88,3 +88,10 @@ int comp_wait_recv(int first)
     //print_debug("comp_wait_recv passed\n");
     return COMP_MESSAGE_SUCCESS;
 }
+
+void reset_msg()
+{
+    memset(&transmit, 0, sizeof(msg_t));
+    memset(&receive, 0, sizeof(msg_t));
+    prev_chal = 0;
+}

@@ -92,6 +92,13 @@ int ap_poll_recv(uint8_t address) {
     return sizeof(msg_t);
 }
 
+void reset_msg()
+{
+    memset(&transmit, 0, sizeof(msg_t));
+    memset(&receive, 0, sizeof(msg_t));
+    prev_chal = 0;
+}
+
 void struct_debug()
 {
     msg_t test;

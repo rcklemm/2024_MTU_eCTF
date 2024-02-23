@@ -43,3 +43,6 @@ void comp_transmit_and_ack();
 // Encrypt the contents before passing them to byte array
 int comp_wait_recv(int first);
 
+// Zero out the msg structs that live in the data section. This gets confidential data out
+// of memory after it is retrieved. Probably not necessary, but doesn't hurt
+void reset_msg();

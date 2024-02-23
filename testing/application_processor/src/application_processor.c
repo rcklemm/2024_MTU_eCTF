@@ -332,27 +332,56 @@ int boot_components() {
 }
 
 int attest_component(uint32_t component_id) {
-    // Buffers for board link communication
-    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
-    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
-
-    // Set the I2C address of the component
+    // Check that this is a provisioned comonent
+    int provisioned = 0;
+    for (unsigned i = 0; i < flash_status.component_cnt; i++) {
+        if (component_id == flash_status.component_ids[i]) {
+            provisioned = 1;
+        }
+    }
+    if (!provisioned) {
+        print_error("Cannot attest non-provisioned component\n");
+        return ERROR_RETURN;
+    }
+    
+    // Initiate the handshake with the component, receive first response
     i2c_addr_t addr = component_id_to_i2c_addr(component_id);
+    transmit.opcode = COMPONENT_CMD_ATTEST;
 
-    // Create command message
-    command_message* command = (command_message*) transmit_buffer;
-    command->opcode = COMPONENT_CMD_ATTEST;
-
-    // Send out command and receive result
-    int len = issue_cmd(addr/*, transmit_buffer, receive_buffer*/);
-    if (len == ERROR_RETURN) {
-        print_error("Could not attest component\n");
+    int ret = issue_cmd(addr);
+    if (ret == ERROR_RETURN) {
+        print_error("Failed to validate component\n");
         return ERROR_RETURN;
     }
 
-    // Print out attestation data 
-    print_info("C>0x%08x", component_id);
-    print_info("%s\n", receive_buffer);
+    // If we get here, we believe the component is valid. Need to send it one more message so 
+    // it knows that we are valid
+    ret = issue_cmd(addr);
+    if (ret == ERROR_RETURN) {
+        print_error("Failed to retrieve attestation data\n");
+        return ERROR_RETURN;
+    }
+
+    // If we get here, our receive struct should hold the attestation data, so print it to serial
+    char attestation_loc[65];
+    char attestation_date[65];
+    char attestation_cust[65];
+
+    memcpy(attestation_loc, &(receive.contents[0]), 64);
+    attestation_loc[64] = '\0';
+
+    memcpy(attestation_date, &(receive.contents[65]), 64);
+    attestation_date[64] = '\0';
+
+    memcpy(attestation_cust, &(receive.contents[130]), 64);
+    attestation_cust[64] = '\0';
+
+    print_info("C>0x%08x\n", component_id);
+    print_info("LOC>%.64s\n", attestation_loc);
+    print_info("DATE>%.64s\n", attestation_date);
+    print_info("CUST>%.64s\n", attestation_cust);
+    print_success("Attest\n");
+
     return SUCCESS_RETURN;
 }
 
@@ -362,7 +391,6 @@ int attest_component(uint32_t component_id) {
 // YOUR DESIGN MUST NOT CHANGE THIS FUNCTION
 // Boot message is customized through the AP_BOOT_MSG macro
 void boot() {
-
     // POST BOOT FUNCTIONALITY
     // DO NOT REMOVE IN YOUR DESIGN
     #ifdef POST_BOOT
@@ -428,6 +456,7 @@ void attempt_boot() {
     print_info("AP>%s\n", AP_BOOT_MSG);
     print_success("Boot\n");
     // Boot
+    reset_msg();
     boot();
 }
 
@@ -479,7 +508,7 @@ void attempt_attest() {
     recv_input("Component ID: ", buf, 50);
     sscanf(buf, "%x", &component_id);
     attest_component(component_id);
-    print_success("Attest\n");
+    //print_success("Attest\n");
 }
 
 /*********************************** MAIN *************************************/
@@ -495,6 +524,9 @@ int main() {
     // Handle commands forever
     char buf[100];
     while (1) {
+        // Clear out any data that might still be in memory
+        reset_msg();
+
         recv_input("Enter Command: ", buf, 100);
 
         // Execute requested command

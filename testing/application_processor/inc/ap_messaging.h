@@ -7,7 +7,6 @@ and these functions handle sending them as an I2C message. We can use the built-
 simple_i2c and board_link libraries as-is, no need to handle that stuff ourselves.
 */
 
-// TODO: Other includes
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
@@ -48,6 +47,10 @@ int ap_transmit(uint8_t address);
 // User needs to specify address.
 // Encrypt the contents before passing them to byte array
 int ap_poll_recv(uint8_t address);
+
+// Zero out the msg structs that live in the data section. This gets confidential data out
+// of memory after it is retrieved. Probably not necessary, but doesn't hurt
+void reset_msg();
 
 void struct_debug();
 

@@ -231,10 +231,29 @@ void process_validate() {
 }
 
 void process_attest() {
-    // The AP requested attestation. Respond with the attestation data
-    uint8_t len = sprintf((char*)transmit_buffer, "LOC>%s\nDATE>%s\nCUST>%s\n",
-                ATTESTATION_LOC, ATTESTATION_DATE, ATTESTATION_CUSTOMER) + 1;
-    send_packet_and_ack(len, transmit_buffer);
+    print_debug("entered process_attest on component\n");
+    // Need to respond to show AP we are valid
+    comp_transmit_and_ack();
+
+    // Now, wait for another message from the AP. Make sure to validate the challenge-response
+    int ret = comp_wait_recv(0);
+    if (ret != COMP_MESSAGE_SUCCESS) {
+        // Send garbage back to AP to clean out i2c, then return
+        comp_transmit_and_ack();
+        return;
+    }
+
+    // If we get here, this is a valid AP requesting attestation, so respond with our actual data
+    // Be careful on memory movement and null terminating
+    // These casts are fine, it just removes some warnings from compiler
+    strncpy((char*) &(transmit.contents[0]), ATTESTATION_LOC, 64);
+    transmit.contents[64] = 0;
+    strncpy((char*) &(transmit.contents[65]), ATTESTATION_DATE, 64);
+    transmit.contents[129] = 0;
+    strncpy((char*) &(transmit.contents[130]), ATTESTATION_CUSTOMER, 64);
+    transmit.contents[194] = 0;
+
+    comp_transmit_and_ack();
 }
 
 /*********************************** MAIN *************************************/
