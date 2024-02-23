@@ -235,11 +235,12 @@ int scan_components() {
     uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
     uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
 
-    // Scan scan command to each component 
-    for (i2c_addr_t addr = 0x24; addr <= 0x25; addr++) {
+    // Scan scan command to each i2c bus address 
+    for (i2c_addr_t addr = 0x8; addr < 0x78; addr++) {
         print_debug("Trying to scan address: %d\n", addr);
         // I2C Blacklist - 0x36 conflicts with separate device on MAX78000FTHR
-        if (addr == 0x36) {
+        if (addr == 0x18 || addr == 0x28 || addr == 0x36) {
+            print_debug("Address %d is blacklisted\n", addr);
             continue;
         }
         
