@@ -367,3 +367,5 @@ cython_debug/
 
 !device/lib
 msdk/
+
+deployment/global_secrets.h
