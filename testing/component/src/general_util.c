@@ -35,7 +35,7 @@ void time_delay(uint32_t low_us, uint32_t high_us)
 {
     uint64_t rnd64;
     // Defines the range for our random number  
-    uint32_t difference = high_us - low_us;
+    uint32_t difference = high_us - low_us + 1;
     uint32_t delay;
 
     // Generate the 64 bit number

@@ -46,12 +46,10 @@ int ap_transmit(uint8_t address);
 // Pack struct to byte array and use the built-in I2C messaging functions to send it out
 // User needs to specify address.
 // Encrypt the contents before passing them to byte array
-int ap_poll_recv(uint8_t address);
+int ap_poll_recv(uint8_t address, int first);
 
 // Zero out the msg structs that live in the data section. This gets confidential data out
 // of memory after it is retrieved. Probably not necessary, but doesn't hurt
 void reset_msg();
-
-void struct_debug();
 
 #endif 

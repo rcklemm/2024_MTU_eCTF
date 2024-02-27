@@ -9,7 +9,7 @@ uint32_t prev_chal;
 //has opcode and content set, everything else is handled here
 int ap_transmit(uint8_t address)
 {
-    print_debug("entering ap_transmit function\n");
+    //print_debug("entering ap_transmit function\n");
     //gen new challenge, and answer old challenge
     transmit.rng_resp = receive.rng_chal + 1;
     //print_debug("generating challenge\n");
@@ -51,11 +51,11 @@ int ap_transmit(uint8_t address)
     return result;
 }
 
-int ap_poll_recv(uint8_t address) {
-    print_debug("ap_poll_recv entered: address = %d\n", address);
+int ap_poll_recv(uint8_t address, int first) {
+    //print_debug("ap_poll_recv entered: address = %d\n", address);
     //poll for incoming packet
     int len = poll_and_receive_packet(address, (uint8_t*)&receive);
-    print_debug("received len=%d from board_link poll_recv\n", len);
+    //print_debug("received len=%d from board_link poll_recv\n", len);
     if (len == 1) {
         return COMPONENT_ALIVE_RET;
     } else if (len != sizeof(msg_t)) {
@@ -77,14 +77,17 @@ int ap_poll_recv(uint8_t address) {
     uint8_t computedHash[HASH_LEN];
     hash((uint8_t*)&receive, computedHash, ENC_LEN-1); 
     if (memcmp(receive.hash, computedHash, HASH_LEN) != 0) {
-        print_debug("hash check failed\n");
+        //print_debug("hash check failed\n");
         return AP_FAILURE; // Hash mismatch
     }
 
     // check challenge response
     //print_debug("Last RNG Challenge was: %u, this RNG response is: %u\n", transmit.rng_chal, receive.rng_resp);
-    if (receive.rng_resp != (prev_chal + 1)) {
-        print_debug("challenge-response check failed\n");
+    // if (first) {
+    //     print_debug("this is the first message of a sequence, so don't need to check RNG here\n");
+    // }
+    if (!first && (receive.rng_resp != (prev_chal + 1))) {
+        //print_debug("challenge-response check failed\n");
         return AP_FAILURE; // Challenge-response mismatch
     }
 
@@ -97,42 +100,4 @@ void reset_msg()
     memset(&transmit, 0, sizeof(msg_t));
     memset(&receive, 0, sizeof(msg_t));
     prev_chal = 0;
-}
-
-void struct_debug()
-{
-    msg_t test;
-
-    test.rng_resp = 0x11111111;
-    test.rng_chal = 0x22222222;
-
-    test.opcode = 0x33;
-
-    memset(test.contents, 0x44, MAX_CONTENTS_LEN);
-
-    memset(test.hash, 0x55, HASH_LEN);
-
-    memset(test.iv, 0x66, IV_LEN);
-
-    print_debug("hex of rng_resp: ");
-    print_hex((uint8_t*) &(test.rng_resp), 4);
-
-    print_debug("hex of rng_chal: ");
-    print_hex((uint8_t*) &(test.rng_chal), 4);
-
-    print_debug("hex of opcode: ");
-    print_hex((uint8_t*) &(test.opcode), 1);
-
-    print_debug("hex of contents: ");
-    print_hex((uint8_t*) &(test.contents), MAX_CONTENTS_LEN);
-
-    print_debug("hex of hash: ");
-    print_hex((uint8_t*) &(test.hash), HASH_LEN);
-
-    print_debug("hex of iv: ");
-    print_hex((uint8_t*) &(test.iv), IV_LEN);
-
-
-    print_debug("hex of full struct: ");
-    print_hex((uint8_t*) &(test), sizeof(msg_t));
 }

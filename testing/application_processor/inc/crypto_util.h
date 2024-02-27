@@ -11,13 +11,9 @@ Implementations go in crypto_util.c
 When writing, use the host_messaging library for debug printing (2024_MTU_eCTF/2024-ectf-insecure-example/application_processor/inc/host_messaging.h)
 */
 
-// We will pull this in from somewhere else later
-// Program takes in 16 0x0 bytes as the key will need to work more details out later
-#define KEY 0x0
 #define HASH_LEN 32
 #define IV_SIZE 16
 
-// TODO: Other includes that are needed
 #include <stdint.h>
 #include <stdlib.h>
 #include "general_util.h"
@@ -25,9 +21,6 @@ When writing, use the host_messaging library for debug printing (2024_MTU_eCTF/2
 // WolfSSL includes requires the wolfssl library to be installed
 #include "wolfssl/wolfcrypt/sha256.h"
 #include "wolfssl/wolfcrypt/aes.h"
-// #include "../../wolfssl/wolfssl-5.6.3-stable/wolfssl/wolfcrypt/aes.h"
-// #include "../../wolfssl/wolfssl-5.6.3-stable/wolfssl/wolfcrypt/sha256.h"
-
 
 // Assume in and out are already allocated, encrypt the contents of *in
 // up to len bytes and put the output in *out

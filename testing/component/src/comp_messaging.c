@@ -1,6 +1,5 @@
 #include "comp_messaging.h"
 #include "board_link.h"
-#include "host_messaging.h"
 
 msg_t transmit, receive;
 uint32_t prev_chal;
@@ -43,11 +42,11 @@ void comp_transmit_and_ack()
 int comp_wait_recv(int first)
 {
     //poll for incoming packet
-    print_debug("comp_wait_recv entered\n");
+    //print_debug("comp_wait_recv entered\n");
     int len = wait_and_receive_packet((uint8_t*)&receive);
-    print_debug("len received from i2c library: %d\n", len);
+    //print_debug("len received from i2c library: %d\n", len);
     if(len == sizeof(uint8_t)) {
-        print_debug("len is 1 --> assuming this is the 'are you alive' message from scan\n");
+        //print_debug("len is 1 --> assuming this is the 'are you alive' message from scan\n");
         // Set to scan opcode
         receive.opcode = 1;
         return COMP_MESSAGE_1BYTE;
@@ -70,17 +69,17 @@ int comp_wait_recv(int first)
     uint8_t computedHash[HASH_LEN];
     hash((uint8_t*)&receive, computedHash, ENC_LEN-1);
     if (memcmp(receive.hash, computedHash, HASH_LEN) != 0) {
-        print_debug("hash check fail\n");
+        //print_debug("hash check fail\n");
         return COMP_MESSAGE_ERROR; // Hash mismatch
     }
 
     // check challenge response
     //print_debug("Last RNG Challenge was: %u, this RNG response is: %u\n", transmit.rng_chal, receive.rng_resp);
-    if (first) {
-        print_debug("this is the first message of a sequence, so don't need to check RNG here\n");
-    }
+    // if (first) {
+    //     print_debug("this is the first message of a sequence, so don't need to check RNG here\n");
+    // }
     if (!first && (receive.rng_resp != (prev_chal + 1))) {
-        print_debug("challenge-response check fail\n");
+        //print_debug("challenge-response check fail\n");
         return COMP_MESSAGE_ERROR; // Challenge-response mismatch
     }
 

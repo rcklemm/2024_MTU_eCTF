@@ -1,12 +1,11 @@
 #include "crypto_util.h"
 #include "host_messaging.h"
-
+#include "global_secrets.h"
 
 #define BLOCK_SIZE 16
 
-// AES key for encryption and decryption (TEMPORARY!!!)
-uint8_t key[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-                   0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F};
+// AES key for encryption and decryption
+uint8_t key[16] = KEY;
 
 /**
  * @brief Encrypts the input using AES in CBC mode.

@@ -22,9 +22,10 @@ void recv_input(const char *msg, char *buf, size_t len) {
     char *fgets_out = fgets(buf, len, stdin);
     if (fgets_out != NULL) {
         buf[strlen(buf) - 1] = '\0';
-    } else {
-        print_debug("fgets failed somehow\n");
-    }
+    } 
+    // else {
+    //     print_debug("fgets failed somehow\n");
+    // }
     //gets(buf);
     puts("");
 }

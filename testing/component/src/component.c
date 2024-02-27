@@ -38,8 +38,6 @@ try to use them here. Whoever does this should also do application_processor.c
 
 #include "comp_messaging.h"
 
-#include "host_messaging.h"
-
 #ifdef POST_BOOT
 #include "led.h"
 #include <stdint.h>
@@ -91,7 +89,6 @@ typedef struct {
 /********************************* FUNCTION DECLARATIONS **********************************/
 // Core function definitions
 void component_process_cmd(void);
-void process_boot(void);
 void process_scan(void);
 void process_validate(void);
 void process_attest(void);
@@ -112,7 +109,24 @@ uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
  * This function must be implemented by your team to align with the security requirements.
 */
 void secure_send(uint8_t* buffer, uint8_t len) {
-    send_packet_and_ack(len, buffer); 
+    reset_msg();
+    
+    // Initiate handshake
+    comp_transmit_and_ack();
+
+    // Receive next part of handshake
+    int result = comp_wait_recv(0);
+    if (result == COMP_MESSAGE_ERROR || result == COMP_MESSAGE_1BYTE) {
+        return;
+    }
+
+    // If everything passes up to this point, actually send the message
+    // First byte of transmit.contents is len, then transmit.contents[1..] holds
+    // the actual message
+    transmit.contents[0] = len;
+    memcpy(&(transmit.contents[1]), buffer, len);
+
+    comp_transmit_and_ack();
 }
 
 /**
@@ -126,7 +140,32 @@ void secure_send(uint8_t* buffer, uint8_t len) {
  * This function must be implemented by your team to align with the security requirements.
 */
 int secure_receive(uint8_t* buffer) {
-    return wait_and_receive_packet(buffer);
+    reset_msg();
+
+    // Receive first part, don't check rng challenge 
+    int result = comp_wait_recv(1);
+    if (result == COMP_MESSAGE_ERROR || result == COMP_MESSAGE_1BYTE) {
+        return -1;
+    }
+
+    // Send second half of handshake
+    comp_transmit_and_ack();
+
+    // Receive last part of handshake, which includes the message
+    result = comp_wait_recv(0);
+    if (result == COMP_MESSAGE_ERROR || result == COMP_MESSAGE_1BYTE) {
+        return -1;
+    }
+    
+    // Length is at first byte of contents
+    uint8_t len = receive.contents[0];
+    // Cap length according to detailed specifications
+    if (len > 64) {
+        return -1;
+    }
+
+    memcpy(buffer, &(receive.contents[1]), len);
+    return len;
 }
 
 /******************************* FUNCTION DEFINITIONS *********************************/
@@ -134,7 +173,6 @@ int secure_receive(uint8_t* buffer) {
 // Example boot sequence
 // Your design does not need to change this
 void boot() {
-
     // POST BOOT FUNCTIONALITY
     // DO NOT REMOVE IN YOUR DESIGN
     #ifdef POST_BOOT
@@ -169,9 +207,6 @@ void component_process_cmd() {
 
     // Output to application processor dependent on command received
     switch (receive.opcode) {
-    case COMPONENT_CMD_BOOT:
-        process_boot();
-        break;
     case COMPONENT_CMD_SCAN:
         process_scan();
         break;
@@ -187,51 +222,74 @@ void component_process_cmd() {
     }
 }
 
-void process_boot() {
-    // The AP requested a boot. Set `component_boot` for the main loop and
-    // respond with the boot message
-
-    uint8_t len = strlen(COMPONENT_BOOT_MSG) + 1;
-    memcpy((void*)transmit_buffer, COMPONENT_BOOT_MSG, len);
-    send_packet_and_ack(len, transmit_buffer);
-    // Call the boot function
-    boot();
-}
-
 void process_scan() {
-    print_debug("entered process_scan on component\n");
+    //print_debug("entered process_scan on component\n");
     
     // Send pack a 1-byte message to show we are alive
     uint8_t alive[1];
-    print_debug("telling AP we are alive\n");
+    //print_debug("telling AP we are alive\n");
     send_packet_and_ack(sizeof(uint8_t), alive);
 
-    print_debug("waiting for AP to ask us for ID\n");
+    //print_debug("waiting for AP to ask us for ID\n");
     int ret = comp_wait_recv(1);
     if (ret != COMP_MESSAGE_SUCCESS) {
-        print_debug("scan wait_recv failed\n");
+        //print_debug("scan wait_recv failed\n");
+        // Send garbage back to AP to clean out i2c, then return
+        comp_transmit_and_ack();
+        return;
     }
 
-    // Receive the next command to actually get
     // The AP requested a scan. Respond with the Component ID
     *((uint32_t *) transmit.contents) = COMPONENT_ID;
     
-    // scan_message* packet = (scan_message*) transmit_buffer;
-    // packet->component_id = COMPONENT_ID;
-    //send_packet_and_ack(sizeof(scan_message), transmit_buffer);
-    print_debug("component trying to respond to scan\n");
+    //print_debug("component trying to respond to scan\n");
     comp_transmit_and_ack();
 }
 
 void process_validate() {
-    // The AP requested a validation. Respond with the Component ID
-    validate_message* packet = (validate_message*) transmit_buffer;
-    packet->component_id = COMPONENT_ID;
-    send_packet_and_ack(sizeof(validate_message), transmit_buffer);
+    //print_debug("entered process_validate on component\n");
+    // Need to respond to show AP we are valid
+    comp_transmit_and_ack();
+
+    // Now, wait for another message from the AP. Make sure to validate the challenge-response
+    int ret = comp_wait_recv(0);
+    if (ret != COMP_MESSAGE_SUCCESS) {
+        // Send garbage back to AP to clean out i2c, then return
+        *((uint32_t *) transmit.contents) = 0;
+        comp_transmit_and_ack();
+        return;
+    }
+    // Send back the component's ID
+    *((uint32_t *) transmit.contents) = COMPONENT_ID;
+    comp_transmit_and_ack();
+
+    // Now, wait for AP to tell us whether full boot is OK
+    ret = comp_wait_recv(0);
+    if (ret != COMP_MESSAGE_SUCCESS) {
+        // Send garbage back to AP to clean out i2c, then return
+        *((uint32_t *) transmit.contents) = 1;
+        comp_transmit_and_ack();
+        return;
+    }
+
+    // Check whether boot is OK
+    uint32_t boot_res = *((uint32_t *) receive.contents);
+    if (boot_res == 0) {
+        // Echo boot success, send boot message, and actually boot
+        *((uint32_t *) transmit.contents) = boot_res;
+        strncpy((char*) &(transmit.contents[4]), COMPONENT_BOOT_MSG, 64);
+        transmit.contents[68] = '\0';
+        comp_transmit_and_ack();
+        boot();
+    } else {
+        // Echo boot failure
+        *((uint32_t *) transmit.contents) = boot_res;
+        comp_transmit_and_ack();
+    }
 }
 
 void process_attest() {
-    print_debug("entered process_attest on component\n");
+    //print_debug("entered process_attest on component\n");
     // Need to respond to show AP we are valid
     comp_transmit_and_ack();
 
@@ -266,14 +324,17 @@ int main(void) {
     
     // Initialize Component
     i2c_addr_t addr = component_id_to_i2c_addr(COMPONENT_ID);
-    print_debug("component initializing with addr: %d\n", addr);
+    //print_debug("component initializing with addr: %d\n", addr);
     board_link_init(addr);
     
 
     //MXC_Delay(10000000);
     LED_On(LED2);
-    print_debug("component starting\n");
+    //print_debug("component starting\n");
     while (1) {
+        // Clear out any data that might still be in memory
+        reset_msg();
+
         comp_wait_recv(1);
 
         component_process_cmd();

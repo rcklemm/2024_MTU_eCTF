@@ -123,7 +123,27 @@ flash_entry flash_status;
 
 */
 int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
-    return send_packet(address, len, buffer);
+    reset_msg();
+
+    // Initiate handshake
+    int result = ap_transmit(address);
+    if (result == ERROR_RETURN) {
+        return ERROR_RETURN;
+    }
+    
+    // Receive next part of handshake
+    result = ap_poll_recv(address, 0);
+    if (result == ERROR_RETURN || result == COMPONENT_ALIVE_RET) {
+        return ERROR_RETURN;
+    }
+
+    // If everything passes up to this point, actually send the message
+    // First byte of transmit.contents is len, then transmit.contents[1..] holds
+    // the actual message
+    transmit.contents[0] = len;
+    memcpy(&(transmit.contents[1]), buffer, len);
+
+    return ap_transmit(address);
 }
 
 /**
@@ -138,7 +158,32 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
  * This function must be implemented by your team to align with the security requirements.
 */
 int secure_receive(i2c_addr_t address, uint8_t* buffer) {
-    return poll_and_receive_packet(address, buffer);
+    reset_msg();
+
+    // Receive first part, don't check rng challenge
+    int result = ap_poll_recv(address, 1);
+    if (result == ERROR_RETURN || result == COMPONENT_ALIVE_RET) {
+        return -1;
+    }
+
+    // Send second half of handshake
+    ap_transmit(address);
+
+    // Receive last part of handshake, which includes the message
+    result = ap_poll_recv(address, 0);
+    if (result == ERROR_RETURN || result == COMPONENT_ALIVE_RET) {
+        return -1;
+    }
+
+    // Length is at first byte of contents
+    uint8_t len = receive.contents[0];
+    // Cap length according to detailed specifications
+    if (len > 64) {
+        return -1;
+    }
+
+    memcpy(buffer, &(receive.contents[1]), len);
+    return len;
 }
 
 /**
@@ -198,7 +243,7 @@ int issue_cmd(i2c_addr_t addr) {
     }
     
     // Receive message
-    int len = ap_poll_recv(addr);
+    int len = ap_poll_recv(addr, 0);
     if (len == ERROR_RETURN) {
         return ERROR_RETURN;
     }
@@ -237,10 +282,10 @@ int scan_components() {
 
     // Scan scan command to each i2c bus address 
     for (i2c_addr_t addr = 0x8; addr < 0x78; addr++) {
-        print_debug("Trying to scan address: %d\n", addr);
+        //print_debug("Trying to scan address: %d\n", addr);
         // I2C Blacklist - 0x36 conflicts with separate device on MAX78000FTHR
         if (addr == 0x18 || addr == 0x28 || addr == 0x36) {
-            print_debug("Address %d is blacklisted\n", addr);
+            //print_debug("Address %d is blacklisted\n", addr);
             continue;
         }
         
@@ -249,11 +294,11 @@ int scan_components() {
         command->opcode = COMPONENT_CMD_SCAN;
         int len = issue_cmd_scan(addr, transmit_buffer, receive_buffer);
         if (len == ERROR_RETURN) {
-            print_debug("Address %d is not up\n", addr);
+            //print_debug("Address %d is not up\n", addr);
             continue;
         }
 
-        print_debug("Address %d is up, getting its ID\n", addr);
+        //print_debug("Address %d is up, getting its ID\n", addr);
         
         // Assume component is alive -- get its ID 
         transmit.opcode = COMPONENT_CMD_SCAN;
@@ -266,69 +311,94 @@ int scan_components() {
             //scan_message* scan = (scan_message*) receive_buffer;
             print_info("F>0x%08x\n", *((uint32_t*) receive.contents));
         } else {
-            print_debug("Failed to receive response from component");
+            //print_debug("Failed to receive response from component");
         }
     }
     print_success("List\n");
     return SUCCESS_RETURN;
 }
 
-int validate_components() {
-    // Buffers for board link communication
-    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
-    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
+int validate_components(uint32_t *challenges) {
+    int validate_result = SUCCESS_RETURN;
 
-    // Send validate command to each component
+    // Validate each component has the correct ID
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
-        // Set the I2C address of the component
+        // Initiate the handshake with the component, receive first response
         i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
+        transmit.opcode = COMPONENT_CMD_VALIDATE;
 
-        // Create command message
-        command_message* command = (command_message*) transmit_buffer;
-        command->opcode = COMPONENT_CMD_VALIDATE;
-        
-        // Send out command and receive result
-        int len = issue_cmd(addr/*, transmit_buffer, receive_buffer*/);
-        if (len == ERROR_RETURN) {
-            print_error("Could not validate component\n");
-            return ERROR_RETURN;
+        int ret = issue_cmd(addr);
+        if (ret == ERROR_RETURN) {
+            print_error("Component ID: 0x%08x invalid\n", flash_status.component_ids[i]);
+            validate_result = ERROR_RETURN;
+            continue;
         }
 
-        validate_message* validate = (validate_message*) receive_buffer;
-        // Check that the result is correct
-        if (validate->component_id != flash_status.component_ids[i]) {
+        // If we get here, we believe the component is valid. Need to send it one more message so 
+        // it knows that we are valid
+        ret = issue_cmd(addr);
+        if (ret == ERROR_RETURN) {
             print_error("Component ID: 0x%08x invalid\n", flash_status.component_ids[i]);
-            return ERROR_RETURN;
+            validate_result = ERROR_RETURN;
+            continue;
+        }
+
+        // If we get here, the receive buffer should be holding the component id
+        uint32_t id = *((uint32_t*) receive.contents);
+        // Save off this component's RNG challenge
+        challenges[i] = receive.rng_chal;
+        // Check that the result is correct
+        if (id != flash_status.component_ids[i]) {
+            print_error("Component ID: 0x%08x invalid\n", flash_status.component_ids[i]);
+            validate_result = ERROR_RETURN;
         }
     }
-    return SUCCESS_RETURN;
+
+    return validate_result;
 }
 
-int boot_components() {
+int boot_components(uint32_t *challenges, int validate_result) {
     // Buffers for board link communication
-    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
-    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
+    int boot_result = validate_result;
 
-    // Send boot command to each component
+    // Here, the components are waiting for one more command from us that says "boot"
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
         // Set the I2C address of the component
         i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
         
-        // Create command message
-        command_message* command = (command_message*) transmit_buffer;
-        command->opcode = COMPONENT_CMD_BOOT;
+        // Set RNG challenge of receive to saved challenge to trick transmit
+        // into replying with the right RNG response for this component
+        receive.rng_chal = challenges[i];
+
+        // Set transmit contents to current boot result, so component knows
+        // whether it should finish booting or abort
+        if (boot_result != SUCCESS_RETURN) {
+            *((uint32_t *) transmit.contents) = UINT32_MAX;
+        } else {
+            *((uint32_t *) transmit.contents) = SUCCESS_RETURN;
+        }
         
         // Send out command and receive result
-        int len = issue_cmd(addr/*, transmit_buffer, receive_buffer*/);
-        if (len == ERROR_RETURN) {
-            print_error("Could not boot component\n");
-            return ERROR_RETURN;
+        int ret = issue_cmd(addr);
+        if (ret == ERROR_RETURN) {
+            print_error("Could not boot component 0x%x\n", flash_status.component_ids[i]);
+            boot_result = ERROR_RETURN;
+            continue;
         }
 
-        // Print boot message from component
-        print_info("0x%x>%s\n", flash_status.component_ids[i], receive_buffer);
+        // Here, the component should have echoed our contents, and if successful
+        // in booting, the component's boot message should be at contents[4]
+        uint32_t comp_boot = *((uint32_t*) receive.contents);
+        if (comp_boot == SUCCESS_RETURN) {
+            // Print boot message from component
+            print_info("0x%x>%.64s\n", flash_status.component_ids[i], &(receive.contents[4]));
+        } else {
+            print_error("Could not boot component 0x%x\n", flash_status.component_ids[i]);
+            boot_result = ERROR_RETURN;
+        }
     }
-    return SUCCESS_RETURN;
+
+    return boot_result;
 }
 
 int attest_component(uint32_t component_id) {
@@ -419,7 +489,11 @@ void boot() {
 int validate_pin() {
     char buf[50];
     recv_input("Enter pin: ", buf, 50);
-    if (!strcmp(buf, AP_PIN)) {
+    char pin[7];
+    strncpy(pin, AP_PIN, 6);
+    pin[6] = '\0';
+
+    if ((strlen(buf) == 6) && !secure_memcmp((uint8_t*) buf, (uint8_t*) pin, 6)) {
         print_debug("Pin Accepted!\n");
         return SUCCESS_RETURN;
     }
@@ -431,7 +505,11 @@ int validate_pin() {
 int validate_token() {
     char buf[50];
     recv_input("Enter token: ", buf, 50);
-    if (!strcmp(buf, AP_TOKEN)) {
+    char token[17];
+    strncpy(token, AP_TOKEN, 16);
+    token[16] = '\0';
+
+    if ((strlen(buf) == 16) && !secure_memcmp((uint8_t*) buf, (uint8_t*) token, 16)) {
         print_debug("Token Accepted!\n");
         return SUCCESS_RETURN;
     }
@@ -441,13 +519,12 @@ int validate_token() {
 
 // Boot the components and board if the components validate
 void attempt_boot() {
-    if (validate_components()) {
-        print_error("Components could not be validated\n");
-        return;
-    }
-    print_debug("All Components validated\n");
-    if (boot_components()) {
-        print_error("Failed to boot all components\n");
+    uint32_t comp_challenges[flash_status.component_cnt];
+    int validate_result = validate_components(comp_challenges);
+    int boot_result = boot_components(comp_challenges, validate_result);
+
+    if (boot_result != SUCCESS_RETURN) {
+        print_error("Boot Failed\n");
         return;
     }
 
@@ -508,7 +585,6 @@ void attempt_attest() {
     recv_input("Component ID: ", buf, 50);
     sscanf(buf, "%x", &component_id);
     attest_component(component_id);
-    //print_success("Attest\n");
 }
 
 /*********************************** MAIN *************************************/
@@ -531,19 +607,18 @@ int main() {
 
         // Execute requested command
         if (!strcmp(buf, "list")) {
-            print_debug("Received List Command\n");
+            //print_debug("Received List Command\n");
             scan_components();
         } else if (!strcmp(buf, "boot")) {
-            print_debug("Received Boot Command\n");
+            //print_debug("Received Boot Command\n");
             attempt_boot();
         } else if (!strcmp(buf, "replace")) {
-            print_debug("Received Replace Command\n");
+            //print_debug("Received Replace Command\n");
             attempt_replace();
         } else if (!strcmp(buf, "attest")) {
-            print_debug("Attest Replace Command\n");
+            //print_debug("Attest Replace Command\n");
             attempt_attest();
         } else {
-            struct_debug();
             print_error("Unrecognized command '%s'\n", buf);
         }
     }
