@@ -25,7 +25,47 @@ uint64_t rng_gen()
     
     return rnd64;
 }
+/**
+ * @brief Does a random time delay for the chip
+ *
+ * @param low_us minium microseconds to wait
+ * @param high_us maxmimum microseconds to wait
+ */
+void time_delay(uint32_t low_us, uint32_t high_us)
+{
+    uint64_t rnd64;
+    // Defines the range for our random number  
+    uint32_t difference = high_us - low_us;
+    uint32_t delay;
 
-void time_delay(size_t low_us, size_t high_us);
+    // Generate the 64 bit number
+    rnd64 = rng_gen();
 
-int secure_memcmp(uint8_t *a, uint8_t *b, size_t len);
+    // Get residue of rnd64 mod difference, add that to low to get a value in range [low, high)
+    delay = low_us + (rnd64 % difference);
+
+    // Call chip delay
+    MXC_Delay(delay);
+}
+
+/**
+ * @brief Compares two regions of memory
+ *
+ * @param a first mem block to compare
+ * @param b second mem block to compare
+ * @param len how many bytes to compare of each mem block
+ */
+int secure_memcmp(uint8_t *a, uint8_t *b, size_t len)
+{
+    uint8_t cmp_status = 0;
+    
+    //Compares the binary of a and b to each other, only if cmp_status
+    //has not changed meaning *a and *b are the same so far. Keeps
+    //running to not leak any info
+    for(int i = 0; i < len; i++){
+        if(a[i] != b[i])
+            cmp_status = 1;
+    }
+
+    return cmp_status;
+}

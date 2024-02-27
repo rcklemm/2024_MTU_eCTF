@@ -12,6 +12,7 @@ The docs are linked somewhere in the Discord, and there's example code sitting s
 #include <stdlib.h>
 #include "mxc_device.h"
 #include "nvic_table.h"
+#include "mxc_delay.h"
 #include "trng.h"
 
 // Return a random 64-bit value. If it's easier, this could just take in a uint8_t[8] array 
@@ -21,7 +22,7 @@ uint64_t rng_gen();
 // Pick a random number of microseconds between low and high, sleep the chip that amount of time
 // No idea how hard this will be to implement. If there isn't built-in functionality, just do busy waiting
 // and query the time constantly in a while-loop
-void time_delay(size_t low_us, size_t high_us);
+void time_delay(uint32_t low_us, uint32_t high_us);
 
 // Compare the contents of *a and *b up to len bytes
 // Do not leave the for-loop early to avoid timing attacks
