@@ -381,7 +381,7 @@ int boot_components(uint32_t *challenges, int validate_result) {
         // Send out command and receive result
         int ret = issue_cmd(addr);
         if (ret == ERROR_RETURN) {
-            print_error("Could not boot component 0x%x\n", flash_status.component_ids[i]);
+            print_error("Could not boot component 0x%08x\n", flash_status.component_ids[i]);
             boot_result = ERROR_RETURN;
             continue;
         }
@@ -391,9 +391,9 @@ int boot_components(uint32_t *challenges, int validate_result) {
         uint32_t comp_boot = *((uint32_t*) receive.contents);
         if (comp_boot == SUCCESS_RETURN) {
             // Print boot message from component
-            print_info("0x%x>%.64s\n", flash_status.component_ids[i], &(receive.contents[4]));
+            print_info("0x%08x>%.64s\n", flash_status.component_ids[i], &(receive.contents[4]));
         } else {
-            print_error("Could not boot component 0x%x\n", flash_status.component_ids[i]);
+            print_error("Could not boot component 0x%08x\n", flash_status.component_ids[i]);
             boot_result = ERROR_RETURN;
         }
     }
