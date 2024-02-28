@@ -38,8 +38,10 @@ try to use them here. Whoever does this should also do component.c
 #include "ap_messaging.h"
 
 #ifdef POST_BOOT
+#include "mxc_delay.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #endif
 
 // Includes from containerized build
