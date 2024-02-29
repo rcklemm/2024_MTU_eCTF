@@ -23,10 +23,6 @@ void recv_input(const char *msg, char *buf, size_t len) {
     if (fgets_out != NULL) {
         buf[strlen(buf) - 1] = '\0';
     } 
-    // else {
-    //     print_debug("fgets failed somehow\n");
-    // }
-    //gets(buf);
     puts("");
 }
 

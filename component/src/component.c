@@ -94,9 +94,6 @@ void process_validate(void);
 void process_attest(void);
 
 /********************************* GLOBAL VARIABLES **********************************/
-// Global varaibles
-uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
-uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
 
 /******************************* POST BOOT FUNCTIONALITY *********************************/
 /**
@@ -116,7 +113,7 @@ void secure_send(uint8_t* buffer, uint8_t len) {
 
     // Receive next part of handshake
     int result = comp_wait_recv(0);
-    if (result == COMP_MESSAGE_ERROR || result == COMP_MESSAGE_1BYTE) {
+    if (result != COMP_MESSAGE_SUCCESS) {
         return;
     }
 
@@ -144,7 +141,7 @@ int secure_receive(uint8_t* buffer) {
 
     // Receive first part, don't check rng challenge 
     int result = comp_wait_recv(1);
-    if (result == COMP_MESSAGE_ERROR || result == COMP_MESSAGE_1BYTE) {
+    if (result != COMP_MESSAGE_SUCCESS) {
         return -1;
     }
 
@@ -153,7 +150,7 @@ int secure_receive(uint8_t* buffer) {
 
     // Receive last part of handshake, which includes the message
     result = comp_wait_recv(0);
-    if (result == COMP_MESSAGE_ERROR || result == COMP_MESSAGE_1BYTE) {
+    if (result != COMP_MESSAGE_SUCCESS) {
         return -1;
     }
     
@@ -203,51 +200,34 @@ void boot() {
 
 // Handle a transaction from the AP
 void component_process_cmd() {
-    //command_message* command = (command_message*) receive_buffer;
-
     // Output to application processor dependent on command received
     switch (receive.opcode) {
-    case COMPONENT_CMD_SCAN:
-        process_scan();
-        break;
-    case COMPONENT_CMD_VALIDATE:
-        process_validate();
-        break;
-    case COMPONENT_CMD_ATTEST:
-        process_attest();
-        break;
-    default:
-        printf("Error: Unrecognized command received %d\n", receive.opcode);
-        break;
+        case COMPONENT_CMD_SCAN:
+            process_scan();
+            break;
+        case COMPONENT_CMD_VALIDATE:
+            process_validate();
+            break;
+        case COMPONENT_CMD_ATTEST:
+            process_attest();
+            break;
+        default:
+            printf("Error: Unrecognized command received %d\n", receive.opcode);
+            // The AP will still be expecting a response if this component is on the I2C bus, 
+            // so send them garbage to avoid the whole MISC freezing up
+            comp_transmit_and_ack();
+            break;
     }
 }
 
-void process_scan() {
-    //print_debug("entered process_scan on component\n");
-    
-    // Send pack a 1-byte message to show we are alive
-    uint8_t alive[1];
-    //print_debug("telling AP we are alive\n");
-    send_packet_and_ack(sizeof(uint8_t), alive);
-
-    //print_debug("waiting for AP to ask us for ID\n");
-    int ret = comp_wait_recv(1);
-    if (ret != COMP_MESSAGE_SUCCESS) {
-        //print_debug("scan wait_recv failed\n");
-        // Send garbage back to AP to clean out i2c, then return
-        comp_transmit_and_ack();
-        return;
-    }
-
+void process_scan() {    
     // The AP requested a scan. Respond with the Component ID
     *((uint32_t *) transmit.contents) = COMPONENT_ID;
     
-    //print_debug("component trying to respond to scan\n");
     comp_transmit_and_ack();
 }
 
 void process_validate() {
-    //print_debug("entered process_validate on component\n");
     // Need to respond to show AP we are valid
     comp_transmit_and_ack();
 
@@ -289,7 +269,6 @@ void process_validate() {
 }
 
 void process_attest() {
-    //print_debug("entered process_attest on component\n");
     // Need to respond to show AP we are valid
     comp_transmit_and_ack();
 
@@ -324,18 +303,20 @@ int main(void) {
     
     // Initialize Component
     i2c_addr_t addr = component_id_to_i2c_addr(COMPONENT_ID);
-    //print_debug("component initializing with addr: %d\n", addr);
     board_link_init(addr);
     
 
-    //MXC_Delay(10000000);
     LED_On(LED2);
-    //print_debug("component starting\n");
     while (1) {
         // Clear out any data that might still be in memory
         reset_msg();
 
-        comp_wait_recv(1);
+        int res = comp_wait_recv(1);
+        if (res != COMP_MESSAGE_SUCCESS) {
+            // If this message is malformed somehow, ensure the opcode
+            // does not send us down some valid code path
+            receive.opcode = COMPONENT_CMD_NONE;
+        }
 
         component_process_cmd();
     }

@@ -8,7 +8,14 @@ __check_defined = \
 		$(error Undefined $1))
 
 all:
-	echo "#define KEY {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}" > global_secrets.h
+# Generate a random encryption key for use between AP and Component
+	echo -n "#define KEY {" > global_secrets.h
+# od prints 16 bytes of hex in format: 00 11 22 ... ff
+# use sed to add commas and 0x prefix: , 0x00, 0x11, 0x22 ... 0xff
+# use cut to remove the extra comma from the front: 0x00, 0x11, 0x22 ... 0xff
+# use head to remove the trailing newline from the output
+	od -An -tx1 -N16 /dev/random | sed "s/ /, 0x/g" | cut -b3- | head -c-1 >> global_secrets.h
+	echo "}" >> global_secrets.h
 
 clean:
 	rm -f global_secrets.h

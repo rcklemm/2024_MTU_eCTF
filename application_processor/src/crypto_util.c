@@ -20,17 +20,9 @@ void aes_encrypt(uint8_t *in, uint8_t *out, uint8_t iv[IV_SIZE], size_t len)
     wolfCrypt_Init(); // Initialize wolfSSL
     // Ensure valid length
     if (len <= 0 || len % BLOCK_SIZE) {
-        //print_debug("INVALID ENCRYPTION LENGTH: %d\n", len);
         return; //Invalid length
     }
     Aes aes; // Context for encryption
-
-    //print_debug("in before encryption: ");
-    //print_hex(in, len);
-    //print_debug("iv= ");
-    //print_hex(iv, IV_SIZE);
-    //print_debug("key= ");
-    //print_hex(key, 16);
 
     wc_AesInit(&aes, NULL, INVALID_DEVID); // Initialize the context
 
@@ -39,9 +31,6 @@ void aes_encrypt(uint8_t *in, uint8_t *out, uint8_t iv[IV_SIZE], size_t len)
 
     wc_AesFree(&aes); // Clean up the context
     wolfCrypt_Cleanup(); // Clean up wolfSSL
-
-    //print_debug("out after encryption: ");
-    //print_hex(out, len);
 }
 
 /**
@@ -57,17 +46,9 @@ void aes_decrypt(uint8_t *in, uint8_t *out, uint8_t iv[IV_SIZE], size_t len)
     wolfCrypt_Init(); // Initialize wolfSSL
     // Ensure valid length
     if (len <= 0 || len % BLOCK_SIZE) {
-        //print_debug("TRYING TO DECRYPT WITH INVALID LENGTH: %d\n", len);
         return; //Invalid length
     }
     Aes aes; // Context for encryption
-
-    //print_debug("in before decryption: ");
-    //print_hex(in, len);
-    //print_debug("iv= ");
-    //print_hex(iv, IV_SIZE);
-    //print_debug("key= ");
-    //print_hex(key, 16);
 
     wc_AesInit(&aes, NULL, INVALID_DEVID); // Initialize the context
 
@@ -77,8 +58,6 @@ void aes_decrypt(uint8_t *in, uint8_t *out, uint8_t iv[IV_SIZE], size_t len)
 
     wc_AesFree(&aes); // Clean up the context
     wolfCrypt_Cleanup(); // Clean up wolfSSL
-    //print_debug("out after decryption: ");
-    //print_hex(out, len);
 }
 
 /**

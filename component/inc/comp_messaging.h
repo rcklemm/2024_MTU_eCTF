@@ -4,7 +4,6 @@ and these functions handle sending them as an I2C message. We can use the built-
 simple_i2c and board_link libraries as-is, no need to handle that stuff ourselves.
 */
 
-// TODO: Other includes
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,7 +11,6 @@ simple_i2c and board_link libraries as-is, no need to handle that stuff ourselve
 
 
 #define COMP_MESSAGE_ERROR -1
-#define COMP_MESSAGE_1BYTE -2
 #define COMP_MESSAGE_SUCCESS 0
 
 // Calculate this as MAX_I2C_LEN - (everything that isn't the contents part that is sent over I2C) - 1

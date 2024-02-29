@@ -129,13 +129,13 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
 
     // Initiate handshake
     int result = ap_transmit(address);
-    if (result == ERROR_RETURN) {
+    if (result != SUCCESS_RETURN) {
         return ERROR_RETURN;
     }
     
     // Receive next part of handshake
     result = ap_poll_recv(address, 0);
-    if (result == ERROR_RETURN || result == COMPONENT_ALIVE_RET) {
+    if (result != SUCCESS_RETURN) {
         return ERROR_RETURN;
     }
 
@@ -164,7 +164,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
 
     // Receive first part, don't check rng challenge
     int result = ap_poll_recv(address, 1);
-    if (result == ERROR_RETURN || result == COMPONENT_ALIVE_RET) {
+    if (result != SUCCESS_RETURN) {
         return -1;
     }
 
@@ -173,7 +173,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
 
     // Receive last part of handshake, which includes the message
     result = ap_poll_recv(address, 0);
-    if (result == ERROR_RETURN || result == COMPONENT_ALIVE_RET) {
+    if (result != SUCCESS_RETURN) {
         return -1;
     }
 
@@ -240,34 +240,17 @@ void init() {
 int issue_cmd(i2c_addr_t addr) {
     // Send message
     int result = ap_transmit(addr);
-    if (result == ERROR_RETURN) {
+    if (result != SUCCESS_RETURN) {
         return ERROR_RETURN;
     }
     
     // Receive message
-    int len = ap_poll_recv(addr, 0);
-    if (len == ERROR_RETURN) {
+    result = ap_poll_recv(addr, 0);
+    if (result != SUCCESS_RETURN) {
         return ERROR_RETURN;
     }
 
-    return len;
-}
-
-// Send a command to a component and receive the result
-// USE THIS JUST IN THE SCANNING, sends exactly one byte
-int issue_cmd_scan(i2c_addr_t addr, uint8_t* transmit, uint8_t* receive) {
-    // Send message
-    int result = send_packet(addr, sizeof(uint8_t), transmit);
-    if (result == ERROR_RETURN) {
-        return ERROR_RETURN;
-    }
-    
-    // Receive message
-    int len = poll_and_receive_packet(addr, receive);
-    if (len == ERROR_RETURN) {
-        return ERROR_RETURN;
-    }
-    return len;
+    return SUCCESS_RETURN;
 }
 
 /******************************** COMPONENT COMMS ********************************/
@@ -279,41 +262,23 @@ int scan_components() {
     }
 
     // Buffers for board link communication
-    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
-    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
 
     // Scan scan command to each i2c bus address 
     for (i2c_addr_t addr = 0x8; addr < 0x78; addr++) {
-        //print_debug("Trying to scan address: %d\n", addr);
         // I2C Blacklist - 0x36 conflicts with separate device on MAX78000FTHR
         if (addr == 0x18 || addr == 0x28 || addr == 0x36) {
-            //print_debug("Address %d is blacklisted\n", addr);
             continue;
         }
-        
-        // Check if component is alive
-        command_message* command = (command_message*) transmit_buffer;
-        command->opcode = COMPONENT_CMD_SCAN;
-        int len = issue_cmd_scan(addr, transmit_buffer, receive_buffer);
-        if (len == ERROR_RETURN) {
-            //print_debug("Address %d is not up\n", addr);
-            continue;
-        }
-
-        //print_debug("Address %d is up, getting its ID\n", addr);
         
         // Assume component is alive -- get its ID 
         transmit.opcode = COMPONENT_CMD_SCAN;
         
         // Send out command and receive result
-        len = issue_cmd(addr);
+        int result = issue_cmd(addr);
 
         // Success, device is present and we have communicated with it again
-        if (len > 0) {
-            //scan_message* scan = (scan_message*) receive_buffer;
+        if (result == SUCCESS_RETURN) {
             print_info("F>0x%08x\n", *((uint32_t*) receive.contents));
-        } else {
-            //print_debug("Failed to receive response from component");
         }
     }
     print_success("List\n");
@@ -330,7 +295,7 @@ int validate_components(uint32_t *challenges) {
         transmit.opcode = COMPONENT_CMD_VALIDATE;
 
         int ret = issue_cmd(addr);
-        if (ret == ERROR_RETURN) {
+        if (ret != SUCCESS_RETURN) {
             print_error("Component ID: 0x%08x invalid\n", flash_status.component_ids[i]);
             validate_result = ERROR_RETURN;
             continue;
@@ -339,7 +304,7 @@ int validate_components(uint32_t *challenges) {
         // If we get here, we believe the component is valid. Need to send it one more message so 
         // it knows that we are valid
         ret = issue_cmd(addr);
-        if (ret == ERROR_RETURN) {
+        if (ret != SUCCESS_RETURN) {
             print_error("Component ID: 0x%08x invalid\n", flash_status.component_ids[i]);
             validate_result = ERROR_RETURN;
             continue;
@@ -382,7 +347,7 @@ int boot_components(uint32_t *challenges, int validate_result) {
         
         // Send out command and receive result
         int ret = issue_cmd(addr);
-        if (ret == ERROR_RETURN) {
+        if (ret != SUCCESS_RETURN) {
             print_error("Could not boot component 0x%08x\n", flash_status.component_ids[i]);
             boot_result = ERROR_RETURN;
             continue;
@@ -421,7 +386,7 @@ int attest_component(uint32_t component_id) {
     transmit.opcode = COMPONENT_CMD_ATTEST;
 
     int ret = issue_cmd(addr);
-    if (ret == ERROR_RETURN) {
+    if (ret != SUCCESS_RETURN) {
         print_error("Failed to validate component\n");
         return ERROR_RETURN;
     }
@@ -429,7 +394,7 @@ int attest_component(uint32_t component_id) {
     // If we get here, we believe the component is valid. Need to send it one more message so 
     // it knows that we are valid
     ret = issue_cmd(addr);
-    if (ret == ERROR_RETURN) {
+    if (ret != SUCCESS_RETURN) {
         print_error("Failed to retrieve attestation data\n");
         return ERROR_RETURN;
     }
@@ -495,6 +460,9 @@ int validate_pin() {
     strncpy(pin, AP_PIN, 6);
     pin[6] = '\0';
 
+    // Right before the memcmp, pause for random time
+    // between 0.5 - 1.5 seconds. Tries to avoid timing attacks
+    time_delay(500000, 1500000);
     if ((strlen(buf) == 6) && !secure_memcmp((uint8_t*) buf, (uint8_t*) pin, 6)) {
         print_debug("Pin Accepted!\n");
         return SUCCESS_RETURN;
@@ -511,6 +479,9 @@ int validate_token() {
     strncpy(token, AP_TOKEN, 16);
     token[16] = '\0';
 
+    // Right before the memcmp, pause for random time
+    // between 0.5 - 1.5 seconds. Tries to avoid timing attacks
+    time_delay(500000, 1500000);
     if ((strlen(buf) == 16) && !secure_memcmp((uint8_t*) buf, (uint8_t*) token, 16)) {
         print_debug("Token Accepted!\n");
         return SUCCESS_RETURN;
@@ -544,6 +515,11 @@ void attempt_replace() {
     char buf[50];
 
     if (validate_token()) {
+        // We are potentially being attacked -- pause 
+        // for 4 seconds, set LED to red during the pause
+        LED_Off(LED3);
+        MXC_Delay(4000000);
+        LED_On(LED3);
         return;
     }
 
@@ -581,6 +557,11 @@ void attempt_attest() {
     char buf[50];
 
     if (validate_pin()) {
+        // We are potentially being attacked -- pause 
+        // for 4 seconds, set LED to red during the pause
+        LED_Off(LED3);
+        MXC_Delay(4000000);
+        LED_On(LED3);
         return;
     }
     uint32_t component_id;
@@ -599,6 +580,11 @@ int main() {
     // Your design does not need to do this
     print_info("Application Processor Started\n");
 
+    // Should be purple in normal operation
+    // Turning off LED3 makes red
+    LED_On(LED1);
+    LED_On(LED3);
+
     // Handle commands forever
     char buf[100];
     while (1) {
@@ -609,16 +595,12 @@ int main() {
 
         // Execute requested command
         if (!strcmp(buf, "list")) {
-            //print_debug("Received List Command\n");
             scan_components();
         } else if (!strcmp(buf, "boot")) {
-            //print_debug("Received Boot Command\n");
             attempt_boot();
         } else if (!strcmp(buf, "replace")) {
-            //print_debug("Received Replace Command\n");
             attempt_replace();
         } else if (!strcmp(buf, "attest")) {
-            //print_debug("Attest Replace Command\n");
             attempt_attest();
         } else {
             print_error("Unrecognized command '%s'\n", buf);

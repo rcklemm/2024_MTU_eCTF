@@ -13,7 +13,6 @@ simple_i2c and board_link libraries as-is, no need to handle that stuff ourselve
 #include "crypto_util.h"
 #include "general_util.h"
 
-#define COMPONENT_ALIVE_RET 1
 #define AP_SUCCESS 0
 #define AP_FAILURE -1
 
