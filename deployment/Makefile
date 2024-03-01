@@ -16,6 +16,12 @@ all:
 # use head to remove the trailing newline from the output
 	od -An -tx1 -N16 /dev/random | sed "s/ /, 0x/g" | cut -b3- | head -c-1 >> global_secrets.h
 	echo "}" >> global_secrets.h
+# Also generate a random flash memory magic value to protect flash integrity
+# This way, valid hashes for flash cannot be predicted
+	echo -n "#define FLASH_MAGIC " >> global_secrets.h
+# Very similar od / sed commands here, this time generating just one 4-byte value
+	od -An -tx4 -N4 /dev/random | sed "s/ /0x/g" >> global_secrets.h
+
 
 clean:
 	rm -f global_secrets.h

@@ -49,20 +49,10 @@ try to use them here. Whoever does this should also do component.c
 #include "global_secrets.h"
 
 /********************************* CONSTANTS **********************************/
-
-// Passed in through ectf-params.h
-// Example of format of ectf-params.h shown here
-/*
-#define AP_PIN "123456"
-#define AP_TOKEN "0123456789abcdef"
-#define COMPONENT_IDS 0x11111124, 0x11111125
-#define COMPONENT_CNT 2
-#define AP_BOOT_MSG "Test boot message"
-*/
-
 // Flash Macros
 #define FLASH_ADDR ((MXC_FLASH_MEM_BASE + MXC_FLASH_MEM_SIZE) - (2 * MXC_FLASH_PAGE_SIZE))
-#define FLASH_MAGIC 0xDEADBEEF
+// Flash magic is in global_secrets
+#define FLASH_ENC_LEN 144   // (4 + 4 + 4*32) (flash_entry initial size) + 8 (extra padding, encrypts part of hash)
 
 // Library call return types
 #define SUCCESS_RETURN 0
@@ -93,11 +83,15 @@ typedef struct {
 } scan_message;
 
 // Datatype for information stored in flash
+#pragma pack(push,1)
 typedef struct {
     uint32_t flash_magic;
     uint32_t component_cnt;
     uint32_t component_ids[32];
+    uint8_t  hash[HASH_LEN];
+    uint8_t  iv[IV_LEN];
 } flash_entry;
+#pragma pack(pop)
 
 // Datatype for commands sent to components
 typedef enum {
@@ -216,12 +210,34 @@ void init() {
     // Setup Flash
     flash_simple_init();
 
-    // Test application has been booted before
+    // Pull info from flash
     flash_simple_read(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
 
+    // Decrypt flash
+    uint8_t decryptedFlash[FLASH_ENC_LEN];
+    aes_decrypt((uint8_t*)&flash_status, decryptedFlash, flash_status.iv, FLASH_ENC_LEN);
+    memcpy((uint8_t*)&flash_status, decryptedFlash, FLASH_ENC_LEN);
+    
+    // Validate hash
+    uint8_t flashHash[HASH_LEN];
+    hash((uint8_t*)&flash_status, flashHash, FLASH_ENC_LEN - 8);
+    int hash_result = ERROR_RETURN;
+    if (!memcmp(flash_status.hash, flashHash, HASH_LEN)) {
+        hash_result = SUCCESS_RETURN;
+    }
+    
+    // Check magic value
+    int magic_result = ERROR_RETURN;
+    if (flash_status.flash_magic == FLASH_MAGIC) {
+        magic_result = SUCCESS_RETURN;
+    }
+
+    // If hash or magic check fails, rewrite flash with encrypted data & valid hash
+    // Invalid hash means either first boot or someone has messed with our flash memory
+
     // Write Component IDs from flash if first boot e.g. flash unwritten
-    if (flash_status.flash_magic != FLASH_MAGIC) {
-        print_debug("First boot, setting flash!\n");
+    if (magic_result != SUCCESS_RETURN || hash_result != SUCCESS_RETURN) {
+        print_debug("Failed to verify flash integrity, resetting flash!\n");
 
         flash_status.flash_magic = FLASH_MAGIC;
         flash_status.component_cnt = COMPONENT_CNT;
@@ -229,7 +245,23 @@ void init() {
         memcpy(flash_status.component_ids, component_ids, 
             COMPONENT_CNT*sizeof(uint32_t));
 
-        flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
+        // Construct hash
+        hash((uint8_t*)&flash_status, flash_status.hash, FLASH_ENC_LEN - 8);
+
+        // Generate an IV
+        uint64_t randValue;
+        randValue = rng_gen();
+        memcpy(&flash_status.iv[0], &randValue, sizeof(randValue));
+        randValue = rng_gen();
+        memcpy(&flash_status.iv[8], &randValue, sizeof(randValue));
+
+        // Create an encrypted copy of the flash data to write to flash
+        flash_entry encrypted_flash;
+        memcpy((uint8_t*)&encrypted_flash, (uint8_t*)&flash_status, sizeof(flash_entry));
+        aes_encrypt((uint8_t*)&flash_status, (uint8_t*)&encrypted_flash, flash_status.iv, FLASH_ENC_LEN);
+        
+        flash_simple_erase_page(FLASH_ADDR);
+        flash_simple_write(FLASH_ADDR, (uint32_t*)&encrypted_flash, sizeof(flash_entry));
     }
     
     // Initialize board link interface
@@ -531,14 +563,31 @@ void attempt_replace() {
     recv_input("Component ID Out: ", buf, 50);
     sscanf(buf, "%x", &component_id_out);
 
+    // Make sure the in component is not already provisioned
+    for (unsigned i = 0; i < flash_status.component_cnt; i++) {
+        if (flash_status.component_ids[i] == component_id_in) {
+            print_error("Component 0x%08x is already provisioned!\n", component_id_in);
+            return;
+        }
+    }
+
     // Find the component to swap out
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
         if (flash_status.component_ids[i] == component_id_out) {
             flash_status.component_ids[i] = component_id_in;
 
+            // Update flash hash, and encrypt before writing back to flash
+            // Construct hash
+            hash((uint8_t*)&flash_status, flash_status.hash, FLASH_ENC_LEN - 8);
+
+            // Create an encrypted copy of the flash data to write to flash
+            flash_entry encrypted_flash;
+            memcpy((uint8_t*)&encrypted_flash, (uint8_t*)&flash_status, sizeof(flash_entry));
+            aes_encrypt((uint8_t*)&flash_status, (uint8_t*)&encrypted_flash, flash_status.iv, FLASH_ENC_LEN);
+
             // write updated component_ids to flash
             flash_simple_erase_page(FLASH_ADDR);
-            flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
+            flash_simple_write(FLASH_ADDR, (uint32_t*)&encrypted_flash, sizeof(flash_entry));
 
             print_debug("Replaced 0x%08x with 0x%08x\n", component_id_out,
                     component_id_in);
