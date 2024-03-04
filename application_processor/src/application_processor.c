@@ -52,7 +52,7 @@ try to use them here. Whoever does this should also do component.c
 // Flash Macros
 #define FLASH_ADDR ((MXC_FLASH_MEM_BASE + MXC_FLASH_MEM_SIZE) - (2 * MXC_FLASH_PAGE_SIZE))
 // Flash magic is in global_secrets
-#define FLASH_ENC_LEN 144   // (4 + 4 + 4*32) (flash_entry initial size) + 8 (extra padding, encrypts part of hash)
+#define FLASH_ENC_LEN 160   // (4 + 4 + 4*32) (flash_entry initial size) + 24 (extra padding, encrypts part of hash)
 
 // Library call return types
 #define SUCCESS_RETURN 0
@@ -220,7 +220,7 @@ void init() {
     
     // Validate hash
     uint8_t flashHash[HASH_LEN];
-    hash((uint8_t*)&flash_status, flashHash, FLASH_ENC_LEN - 8);
+    hash((uint8_t*)&flash_status, flashHash, FLASH_ENC_LEN - 24);
     int hash_result = ERROR_RETURN;
     if (!memcmp(flash_status.hash, flashHash, HASH_LEN)) {
         hash_result = SUCCESS_RETURN;
@@ -246,7 +246,7 @@ void init() {
             COMPONENT_CNT*sizeof(uint32_t));
 
         // Construct hash
-        hash((uint8_t*)&flash_status, flash_status.hash, FLASH_ENC_LEN - 8);
+        hash((uint8_t*)&flash_status, flash_status.hash, FLASH_ENC_LEN - 24);
 
         // Generate an IV
         uint64_t randValue;
@@ -578,7 +578,7 @@ void attempt_replace() {
 
             // Update flash hash, and encrypt before writing back to flash
             // Construct hash
-            hash((uint8_t*)&flash_status, flash_status.hash, FLASH_ENC_LEN - 8);
+            hash((uint8_t*)&flash_status, flash_status.hash, FLASH_ENC_LEN - 24);
 
             // Create an encrypted copy of the flash data to write to flash
             flash_entry encrypted_flash;
@@ -622,6 +622,9 @@ void attempt_attest() {
 /*********************************** MAIN *************************************/
 
 int main() {
+    // char a[2];
+    // recv_input("sync ", a, 2);
+
     // Initialize board
     init();
 

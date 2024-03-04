@@ -17,7 +17,7 @@ simple_i2c and board_link libraries as-is, no need to handle that stuff ourselve
 #define MAX_CONTENTS_LEN 198
 #define HASH_LEN 32
 #define IV_LEN 16
-#define ENC_LEN 208
+#define ENC_LEN 224
 
 #pragma pack(push,1)
 typedef struct msg_t {

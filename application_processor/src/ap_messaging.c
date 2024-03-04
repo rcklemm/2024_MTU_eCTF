@@ -24,7 +24,7 @@ int ap_transmit(uint8_t address)
     memcpy(&transmit.iv[8], &randValue, sizeof(randValue));
 
     //gen hash
-    hash((uint8_t*)&transmit, transmit.hash, ENC_LEN-1);
+    hash((uint8_t*)&transmit, transmit.hash, ENC_LEN - 17);
 
     // Encrypt from rng_chal to contents
     uint8_t encryptedData[ENC_LEN];
@@ -51,7 +51,7 @@ int ap_poll_recv(uint8_t address, int first) {
 
     // verify hash
     uint8_t computedHash[HASH_LEN];
-    hash((uint8_t*)&receive, computedHash, ENC_LEN-1); 
+    hash((uint8_t*)&receive, computedHash, ENC_LEN - 17); 
     if (memcmp(receive.hash, computedHash, HASH_LEN) != 0) {
         return AP_FAILURE; // Hash mismatch
     }

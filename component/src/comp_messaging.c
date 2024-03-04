@@ -21,7 +21,7 @@ void comp_transmit_and_ack()
     memcpy(&transmit.iv[8], &randValue, sizeof(randValue));
 
     //gen hash
-    hash((uint8_t*)&transmit, transmit.hash, ENC_LEN-1);
+    hash((uint8_t*)&transmit, transmit.hash, ENC_LEN - 17);
 
     // Encrypt from rng_chal to contents
     uint8_t encryptedData[ENC_LEN];
@@ -48,7 +48,7 @@ int comp_wait_recv(int first)
 
     // verify hash
     uint8_t computedHash[HASH_LEN];
-    hash((uint8_t*)&receive, computedHash, ENC_LEN-1);
+    hash((uint8_t*)&receive, computedHash, ENC_LEN - 17);
     if (memcmp(receive.hash, computedHash, HASH_LEN) != 0) {
         return COMP_MESSAGE_ERROR; // Hash mismatch
     }
