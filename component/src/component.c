@@ -1,11 +1,3 @@
-/*
-Initially copying this in untouched, this is the core of what we need to update for 
-the actual functional & security requirements. Assume our libraries work correctly and 
-try to use them here. Whoever does this should also do application_processor.c
-
-*/
-
-
 /**
  * @file component.c
  * @author Jacob Doll 
@@ -45,22 +37,6 @@ try to use them here. Whoever does this should also do application_processor.c
 #include <string.h>
 #endif
 
-/********************************* CONSTANTS **********************************/
-
-// Passed in through ectf-params.h
-// Example of format of ectf-params.h shown here
-/*
-#define COMPONENT_ID 0x11111124
-#define COMPONENT_BOOT_MSG "Component boot"
-#define ATTESTATION_LOC "McLean"
-#define ATTESTATION_DATE "08/08/08"
-#define ATTESTATION_CUSTOMER "Fritz"
-*/
-
-extern msg_t transmit;
-extern msg_t receive;
-
-
 /******************************** TYPE DEFINITIONS ********************************/
 // Commands received by Component using 32 bit integer
 typedef enum {
@@ -71,20 +47,6 @@ typedef enum {
     COMPONENT_CMD_ATTEST
 } component_cmd_t;
 
-/******************************** TYPE DEFINITIONS ********************************/
-// Data structure for receiving messages from the AP
-typedef struct {
-    uint8_t opcode;
-    uint8_t params[MAX_I2C_MESSAGE_LEN-1];
-} command_message;
-
-typedef struct {
-    uint32_t component_id;
-} validate_message;
-
-typedef struct {
-    uint32_t component_id;
-} scan_message;
 
 /********************************* FUNCTION DECLARATIONS **********************************/
 // Core function definitions
@@ -94,6 +56,9 @@ void process_validate(void);
 void process_attest(void);
 
 /********************************* GLOBAL VARIABLES **********************************/
+// Global messaging strucs from comp_messaging.c
+extern msg_t transmit;
+extern msg_t receive;
 
 /******************************* POST BOOT FUNCTIONALITY *********************************/
 /**
@@ -200,11 +165,13 @@ void boot() {
 
 // Handle a transaction from the AP
 void component_process_cmd() {
-    // Output to application processor dependent on command received
+    // Figure out which command we were sent
     switch (receive.opcode) {
         case COMPONENT_CMD_SCAN:
             process_scan();
             break;
+        // Our design combines validate + boot into one continuous message sequence
+        // between AP and Component, so VALIDATE here is essentially BOOT
         case COMPONENT_CMD_VALIDATE:
             process_validate();
             break;
@@ -311,6 +278,7 @@ int main(void) {
         // Clear out any data that might still be in memory
         reset_msg();
 
+        // Wait for a message from the AP
         int res = comp_wait_recv(1);
         if (res != COMP_MESSAGE_SUCCESS) {
             // If this message is malformed somehow, ensure the opcode
@@ -318,6 +286,7 @@ int main(void) {
             receive.opcode = COMPONENT_CMD_NONE;
         }
 
+        // Process the AP's message
         component_process_cmd();
     }
 }

@@ -19,7 +19,9 @@ void recv_input(const char *msg, char *buf, size_t len) {
     print_debug(msg);
     fflush(0);
     print_ack();
+    // Use fgets instead of gets(buf) to avoid buffer overflow
     char *fgets_out = fgets(buf, len, stdin);
+    // fgets keeps the newline in, so manually remove it on successful read
     if (fgets_out != NULL) {
         buf[strlen(buf) - 1] = '\0';
     } 

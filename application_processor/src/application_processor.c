@@ -1,10 +1,3 @@
-/*
-Initially copying this in untouched, this is the core of what we need to update for 
-the actual functional & security requirements. Assume our libraries work correctly and 
-try to use them here. Whoever does this should also do component.c
-*/
-
-
 /**
  * @file application_processor.c
  * @author Jacob Doll
@@ -58,30 +51,12 @@ try to use them here. Whoever does this should also do component.c
 #define SUCCESS_RETURN 0
 #define ERROR_RETURN -1
 
+// Global messaging structs from ap_messaging.c
 extern msg_t transmit;
 extern msg_t receive;
 
 
 /******************************** TYPE DEFINITIONS ********************************/
-// Data structure for sending commands to component
-// Params allows for up to MAX_I2C_MESSAGE_LEN - 1 bytes to be send
-// along with the opcode through board_link. This is not utilized by the example
-// design but can be utilized by your design.
-typedef struct {
-    uint8_t opcode;
-    uint8_t params[MAX_I2C_MESSAGE_LEN-1];
-} command_message;
-
-// Data type for receiving a validate message
-typedef struct {
-    uint32_t component_id;
-} validate_message;
-
-// Data type for receiving a scan message
-typedef struct {
-    uint32_t component_id;
-} scan_message;
-
 // Datatype for information stored in flash
 #pragma pack(push,1)
 typedef struct {
@@ -357,7 +332,6 @@ int validate_components(uint32_t *challenges) {
 }
 
 int boot_components(uint32_t *challenges, int validate_result) {
-    // Buffers for board link communication
     int boot_result = validate_result;
 
     // Here, the components are waiting for one more command from us that says "boot"
@@ -622,18 +596,13 @@ void attempt_attest() {
 /*********************************** MAIN *************************************/
 
 int main() {
-    // char a[2];
-    // recv_input("sync ", a, 2);
-
     // Initialize board
     init();
 
-    // Print the component IDs to be helpful
-    // Your design does not need to do this
     print_info("Application Processor Started\n");
 
     // Should be purple in normal operation
-    // Turning off LED3 makes red
+    // Turning off LED3 makes it red
     LED_On(LED1);
     LED_On(LED3);
 
@@ -643,6 +612,7 @@ int main() {
         // Clear out any data that might still be in memory
         reset_msg();
 
+        // (safely) read the next message from serial
         recv_input("Enter Command: ", buf, 100);
 
         // Execute requested command
