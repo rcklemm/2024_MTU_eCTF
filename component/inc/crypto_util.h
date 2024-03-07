@@ -1,14 +1,12 @@
 #ifndef CRYPTO_UTIL_H
 #define CRYPTO_UTIL_H
 
-
 /*
-Basically a replacement for the simple_crypto library they give us.
-Should also use WolfSSL, but implement better encrypt / hash algs.
+A replacement for the simple_crypto library, utilizing WolfSSL for enhanced encryption and hashing algorithms.
 
-Implementations go in crypto_util.c
+The corresponding implementations are located in crypto_util.c.
 
-When writing, use the host_messaging library for debug printing (2024_MTU_eCTF/2024-ectf-insecure-example/application_processor/inc/host_messaging.h)
+For debug printing, this code utilizes the host_messaging library from 2024_MTU_eCTF/2024-ectf-insecure-example/application_processor/inc/host_messaging.h.
 */
 
 #define HASH_LEN 32
@@ -22,15 +20,13 @@ When writing, use the host_messaging library for debug printing (2024_MTU_eCTF/2
 #include "wolfssl/wolfcrypt/sha256.h"
 #include "wolfssl/wolfcrypt/aes.h"
 
-// Assume in and out are already allocated, encrypt the contents of *in
-// up to len bytes and put the output in *out
-// IV is filled by the caller
+// Encrypts the content pointed by *in up to len bytes and stores the output in *out. The IV is provided by the caller.
 void aes_encrypt(uint8_t *in, uint8_t *out, uint8_t iv[IV_SIZE], size_t len);
 
-// Should be pretty obvious how this works
+// Decrypts the content pointed by *in up to len bytes and stores the output in *out. The IV is provided by the caller.
 void aes_decrypt(uint8_t *in, uint8_t *out, uint8_t IV[IV_SIZE], size_t len);
 
-// SHA-256 hash the bytes in *in, put the result into *out
+// Computes the SHA-256 hash of the bytes in *in and stores the result in *out.
 void hash(uint8_t *in, uint8_t out[HASH_LEN], size_t len);
 
 #endif
