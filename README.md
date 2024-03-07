@@ -24,7 +24,7 @@ design, as described by the `mtu_design_doc.pdf` specification.
       - `crypto_util.h` - Defines our encryption, decryption, and hashing routines. AP and Component copies are the same
       - `general_util.h` - Defines routines for TRNG and timing-resistant `memcmp`. AP and Component copies are the same
     - `src` - Directory with c source files
-      - `ap_messaging.c` - Implementation for `ap_messaging.h`
+      - `comp_messaging.c` - Implementation for `comp_messaging.h`
       - `crypto_util.c` - Implementation for `crypto_util.h`. AP and Component copies are the same
       - `general_util.c` - Implementation for `general_util.h`. AP and Component copies are the same
     - `wolfssl` - Contains wolfssl library source code for our crypto utilities
